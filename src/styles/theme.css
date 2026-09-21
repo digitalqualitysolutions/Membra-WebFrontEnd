@@ -1,0 +1,148 @@
+/**
+ * Layer 2: semantic tokens.
+ *
+ * Everything the UI is allowed to reference. Each token says what a colour is
+ * for ("the page canvas", "a card surface") rather than what it looks like, so
+ * a second theme only restates the values further down this file. No component
+ * changes.
+ *
+ * Adding a colour? Raw value goes in `palette.css`, semantic name goes here,
+ * and it needs a value in both blocks below.
+ */
+
+/*
+ * Dark mode is opt-in through a `dark` class on <html> rather than the OS
+ * setting alone, so a theme switcher can offer light / dark / system later.
+ * Drop this line to fall back to Tailwind's `prefers-color-scheme` default.
+ */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme static {
+  /* Surfaces */
+  --color-page: #f7f9fb; /* app canvas */
+  --color-surface: #ffffff; /* cards, header, popovers */
+  --color-field: #f0f4f8; /* input fill */
+  --color-badge: #edf2f7; /* icon medallion fill */
+  --color-track: #edf1f5; /* segmented-control groove */
+
+  /* Text */
+  --color-ink: #16293f; /* headings, primary buttons, logo tile */
+  --color-ink-soft: #1f3d5c; /* primary hover */
+  --color-on-ink: #ffffff; /* text/icons on an `ink` surface */
+  --color-body: #3d4f63; /* default body copy */
+  --color-ink-muted: #7c8da1; /* labels, helper text */
+  --color-subtle: #97a5b6; /* placeholders, footer meta */
+
+  /* Lines */
+  --color-line: #e7ecf2; /* card + section borders */
+  --color-line-strong: #dce3eb; /* outline-button border */
+  --color-field-line: #e1e8f0; /* input border */
+  --color-separator: #c9d2dc; /* header breadcrumb slash */
+
+  /* Accents */
+  --color-focus: #7e79b4; /* ring on a focused control */
+  --color-lock: #e3a72f; /* consent padlock */
+  --color-danger: #c0392b; /* validation errors */
+  --color-success: #4a7c50; /* a change that saved */
+
+  /* Elevation. Tinted per theme by the shadow-* variables below. */
+  --shadow-btn: 0 1px 2px var(--shadow-tint-strong);
+  --shadow-badge: 0 1px 2px var(--shadow-tint-faint);
+  --shadow-card: 0 1px 3px var(--shadow-tint-faint),
+    0 16px 40px -16px var(--shadow-tint-soft);
+}
+
+:root {
+  color-scheme: light;
+
+  --shadow-tint-faint: rgb(16 32 52 / 0.04);
+  --shadow-tint-soft: rgb(16 32 52 / 0.12);
+  --shadow-tint-strong: rgb(16 32 52 / 0.16);
+}
+
+/*
+ * Dark theme. Values are mixed out of the brand primitives so the two themes
+ * stay related. `ink` inverts to a near-white, which keeps every
+ * `bg-ink text-on-ink` pairing readable without touching a component.
+ */
+.dark {
+  color-scheme: dark;
+
+  /* Surfaces */
+  --color-page: var(--color-brand-blue-101);
+  --color-surface: color-mix(
+    in oklab,
+    var(--color-brand-blue-101) 92%,
+    var(--color-brand-white)
+  );
+  --color-field: color-mix(
+    in oklab,
+    var(--color-brand-blue-101) 95%,
+    var(--color-brand-white)
+  );
+  --color-badge: color-mix(
+    in oklab,
+    var(--color-brand-blue-101) 88%,
+    var(--color-brand-white)
+  );
+  --color-track: color-mix(
+    in oklab,
+    var(--color-brand-blue-101) 88%,
+    var(--color-brand-white)
+  );
+
+  /* Text */
+  --color-ink: color-mix(
+    in oklab,
+    var(--color-brand-white) 92%,
+    var(--color-brand-blue-1)
+  );
+  --color-ink-soft: color-mix(
+    in oklab,
+    var(--color-brand-white) 80%,
+    var(--color-brand-blue-1)
+  );
+  --color-on-ink: var(--color-brand-blue-101);
+  --color-body: color-mix(
+    in oklab,
+    var(--color-brand-white) 70%,
+    var(--color-brand-blue-1)
+  );
+  --color-ink-muted: var(--color-brand-blue-1);
+  --color-subtle: var(--color-brand-blue-2);
+
+  /* Lines */
+  --color-line: color-mix(
+    in oklab,
+    var(--color-brand-blue-101) 82%,
+    var(--color-brand-white)
+  );
+  --color-line-strong: color-mix(
+    in oklab,
+    var(--color-brand-blue-101) 74%,
+    var(--color-brand-white)
+  );
+  --color-field-line: color-mix(
+    in oklab,
+    var(--color-brand-blue-101) 84%,
+    var(--color-brand-white)
+  );
+  --color-separator: color-mix(
+    in oklab,
+    var(--color-brand-blue-101) 66%,
+    var(--color-brand-white)
+  );
+
+  /* Accents */
+  /* A step lighter, or the ring vanishes against the navy canvas. */
+  --color-focus: var(--color-brand-purple-2);
+  --color-lock: var(--color-brand-orange);
+  --color-danger: var(--color-brand-red);
+  /* The brand green is a fill, not a text colour; lift it off the navy. */
+  --color-success: var(--color-brand-green-101);
+
+  /* Elevation reads as depth, not haze, on a dark canvas. */
+  --shadow-tint-faint: rgb(0 0 0 / 0.24);
+  --shadow-tint-soft: rgb(0 0 0 / 0.45);
+  --shadow-tint-strong: rgb(0 0 0 / 0.5);
+}
