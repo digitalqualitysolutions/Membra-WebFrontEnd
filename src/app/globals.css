@@ -1,0 +1,272 @@
+@import "tailwindcss";
+
+/* Colour in one place: primitives first, then the semantic tokens the UI uses. */
+@import "../styles/palette.css";
+@import "../styles/theme.css";
+
+/* shadcn's own base: data-* variants and its animation scale. No colours. */
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/*
+ * Type in one place, the way colour is.
+ *
+ * `--font-inter` comes from the loader in `config/fonts.ts`, which the locale
+ * layout puts on <html>. The fallbacks behind it are what renders until the
+ * webfont lands, and they mirror `fontStacks` in that same file - CSS can't
+ * import a constant, so those two lists are the only copies and they move
+ * together.
+ *
+ * Naming the mono stack matters as much as the sans one: without it `font-mono`
+ * quietly resolves to Tailwind's own list, which is a third stack again.
+ */
+@theme {
+  --font-sans:
+    var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, sans-serif;
+
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/*
+ * Layer 3: shadcn's token names, pointed at ours.
+ *
+ * shadcn components are written against `--primary`, `--border`, `--ring` and
+ * friends. Instead of maintaining a second palette, alias each of those to the
+ * semantic token that already means the same thing, so a shadcn component and a
+ * hand-written one can't drift apart.
+ *
+ * No `.dark` block here, on purpose: the tokens on the right already restate
+ * themselves under `.dark`, and since both `:root` and `.dark` land on <html>,
+ * these aliases resolve to whichever theme is live.
+ */
+:root {
+  --background: var(--color-page);
+  --foreground: var(--color-ink);
+
+  --card: var(--color-surface);
+  --card-foreground: var(--color-ink);
+  --popover: var(--color-surface);
+  --popover-foreground: var(--color-ink);
+
+  --primary: var(--color-ink);
+  --primary-foreground: var(--color-on-ink);
+  --secondary: var(--color-field);
+  --secondary-foreground: var(--color-ink);
+
+  /*
+   * shadcn's `muted` is a subdued fill; ours meant subdued text. Two different
+   * ideas can't share `--color-muted` (the later definition just won, silently),
+   * so ours got renamed to `ink-muted`.
+   */
+  --muted: var(--color-field);
+  --muted-foreground: var(--color-ink-muted);
+  --accent: var(--color-badge);
+  --accent-foreground: var(--color-ink);
+
+  --destructive: var(--color-danger);
+  --border: var(--color-line);
+  --input: var(--color-field-line);
+  --ring: var(--color-focus);
+
+  /* Charts follow the accent rotation in `config/colors.ts`. */
+  --chart-1: var(--color-brand-blue-2);
+  --chart-2: var(--color-brand-green-2);
+  --chart-3: var(--color-brand-purple-3);
+  --chart-4: var(--color-brand-orange);
+  --chart-5: var(--color-brand-turquoise);
+
+  --sidebar: var(--color-surface);
+  --sidebar-foreground: var(--color-body);
+  --sidebar-primary: var(--color-ink);
+  --sidebar-primary-foreground: var(--color-on-ink);
+  --sidebar-accent: var(--color-badge);
+  --sidebar-accent-foreground: var(--color-ink);
+  --sidebar-border: var(--color-line);
+  --sidebar-ring: var(--color-ink);
+
+  /* 10px, the radius our fields and buttons already used. */
+  --radius: 0.625rem;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  /* 16px, so the auth card keeps the corner it's always had. */
+  --radius-2xl: calc(var(--radius) * 1.6);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  /*
+   * The hand back on anything you can press.
+   *
+   * Tailwind v4 stopped giving buttons `cursor: pointer` — its reasoning is
+   * that the arrow is what the platform does natively. On the web it isn't:
+   * every button on every other site has said "pressable" with a hand for
+   * thirty years, and a control that doesn't is read as decoration. Put back
+   * once, here, rather than as a class on each of the hundred buttons.
+   *
+   * Not on a disabled one, which is the case the arrow is right for.
+   */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Hide the browser's native password reveal control; we render our own. */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none;
+}
+
+/*
+ * A scrollbar for a panel rather than for a window.
+ *
+ * The platform's own is built for a page and is wide enough, inside a 240px
+ * menu or a nav column, to crowd the labels it sits beside. This is the same
+ * bar drawn narrow, in the palette's own line colour, on no track at all.
+ *
+ * Both spellings, because they're different browsers rather than a fallback:
+ * `scrollbar-width` and `scrollbar-color` are the standard ones, and the
+ * `::-webkit-` pseudo-elements are what Safari reads before 18.2.
+ */
+@utility scrollbar-slim {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line-strong) transparent;
+
+  &::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 9999px;
+    background-clip: content-box;
+    background-color: var(--color-line-strong);
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-ink-muted);
+  }
+}
+
+/*
+ * Opt a page out of the native scrollbar. Scrolling still works; the track just
+ * stops taking up space, which is what was shifting the centred card.
+ *
+ * Aimed at `[data-app-scroll]` - the shell's scrolling column - rather than at
+ * `main`, which sits inside it and doesn't scroll on its own.
+ */
+html:has([data-hide-scrollbar]),
+[data-app-scroll]:has([data-hide-scrollbar]) {
+  scrollbar-width: none;
+}
+
+html:has([data-hide-scrollbar])::-webkit-scrollbar,
+[data-app-scroll]:has([data-hide-scrollbar])::-webkit-scrollbar {
+  display: none;
+}
+
+/*
+ * Autofill.
+ *
+ * Chrome and Safari paint their own background and text colour over a field the
+ * browser filled, as a UA style there is no property to switch off. Our fields
+ * draw their fill on the wrapper rather than the input, so that paint lands on a
+ * box that stops short of the trailing icon: a hard-edged block ending mid-field
+ * with the icon stranded outside it, wider on the password field than the email
+ * one because their addons differ in width.
+ *
+ * Two ways over the top of it, depending on who owns the fill.
+ *
+ * Inside an input group the input is transparent and the group carries the fill,
+ * so clipping the background to the glyphs makes it disappear: the only thing
+ * left painted is behind the text, and `-webkit-text-fill-color` covers exactly
+ * that. Filling the input instead would paint a square-cornered block over the
+ * group's rounded ones.
+ */
+input[data-slot="input-group-control"]:-webkit-autofill,
+input[data-slot="input-group-control"]:-webkit-autofill:hover,
+input[data-slot="input-group-control"]:-webkit-autofill:focus,
+input[data-slot="input-group-control"]:-webkit-autofill:active {
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+/*
+ * A standalone input carries its own fill, so cover the UA's with ours. The
+ * shadow is inset and clipped to the border radius, which the corners need.
+ */
+input[data-slot="input"]:-webkit-autofill,
+input[data-slot="input"]:-webkit-autofill:hover,
+input[data-slot="input"]:-webkit-autofill:active {
+  box-shadow: inset 0 0 0 100vmax var(--color-field);
+}
+
+/* Focus lifts a field onto the raised surface. The cover follows it up. */
+input[data-slot="input"]:-webkit-autofill:focus {
+  box-shadow:
+    inset 0 0 0 100vmax var(--color-surface),
+    0 0 0 2px color-mix(in oklab, var(--color-focus) 15%, transparent);
+}
+
+/* Either way the text is ours to colour, and so is the caret. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-text-fill-color: var(--color-ink);
+  caret-color: var(--color-ink);
+}

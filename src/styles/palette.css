@@ -1,0 +1,49 @@
+/**
+ * Layer 1: brand primitives.
+ *
+ * The raw named colours of the Membra brand. Constants, in that they mean the
+ * same thing in every theme and never change between light and dark. Don't
+ * reference one directly from the app; pick a semantic token out of
+ * `theme.css`, and add one there if nothing fits.
+ *
+ * `static` keeps every variable in the output even when no utility uses it,
+ * since they're also read through `var()` from CSS and from `colors.ts`.
+ */
+@theme static {
+  --color-brand-blue-1: #88a1bc;
+  --color-brand-blue-2: #68849e;
+  --color-brand-blue-101: #0e2841;
+
+  --color-brand-brown-1: #bca388;
+  --color-brand-brown-2: #9a836e;
+
+  --color-brand-green-1: #9db77e;
+  --color-brand-green-2: #73a172;
+  --color-brand-green-101: #b8d8be;
+
+  --color-brand-grey-1: #d0d0d0;
+  --color-brand-grey-2: #959595;
+  --color-brand-grey-102: #a6a6a6;
+
+  --color-brand-magenta-1: #bc88bb;
+  --color-brand-magenta-2: #9d689e;
+
+  --color-brand-orange: #ceb17f;
+
+  --color-brand-pink-1: #c7a2b0;
+  --color-brand-pink-2: #b4799b;
+
+  --color-brand-purple-1: #a387c0;
+  --color-brand-purple-2: #a6a2c7;
+  --color-brand-purple-3: #7e79b4;
+  --color-brand-purple-4: #836e9a;
+
+  --color-brand-red: #c08787;
+  --color-brand-turquoise: #7eb7b5;
+
+  --color-brand-yellow-1: #d7d694;
+  --color-brand-yellow-2: #b4b079;
+
+  --color-brand-black: #000000;
+  --color-brand-white: #ffffff;
+}
