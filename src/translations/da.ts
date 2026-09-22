@@ -358,7 +358,16 @@ export const da: Dictionary = {
         friends: "Venner",
         active: "Aktiv",
         directions: "Vejvisning",
+        actions: "Handlinger",
       },
+
+      editRow: "Rediger {name}",
+      nameRequired: "En lokation skal have et navn.",
+      shortRequired: "En lokation skal have en forkortelse.",
+      shortInvalid:
+        "En forkortelse er højst 8 tegn og må ikke indeholde punktum eller mellemrum.",
+      shortTaken: "“{short}” er allerede brugt her. Vælg en anden.",
+      countInvalid: "Antal medlemmer for at booke er et tal fra 1 til 30.",
     },
   },
 

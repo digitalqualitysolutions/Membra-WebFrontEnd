@@ -408,7 +408,17 @@ export const en = {
         friends: "Friends",
         active: "Active",
         directions: "Directions",
+        actions: "Actions",
       },
+
+      /** The pencil on a row, which opens its name and code for typing. */
+      editRow: "Edit {name}",
+      nameRequired: "A location needs a name.",
+      shortRequired: "A location needs a short code.",
+      shortInvalid:
+        "A short code is up to 8 characters and can't contain a dot or a space.",
+      shortTaken: "“{short}” is already used in this location. Pick another.",
+      countInvalid: "Members required to book is a number from 1 to 30.",
     },
   },
 

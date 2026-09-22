@@ -1,7 +1,7 @@
 "use client";
 
-import { useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
+import { useMemo, useState, useTransition } from "react";
 
 import { Icon } from "@/components/icons";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,8 @@ import {
   compactInput,
   compactTrigger,
 } from "@/features/club/components/record-parts";
+import type { LocationChange } from "@/features/club/services/location-state";
+import { saveLocationsAction } from "@/features/club/services/update-location";
 import type {
   ClubAddress,
   ClubLocation,
@@ -52,6 +54,11 @@ const trailingToggles = [
 const INDENT_STEP = 16;
 const INDENT_MAX = 96;
 
+/** The API's caps on a location's short code, booking count and directions. */
+const SHORT_MAX = 8;
+const COUNT_MAX = 30;
+const DIRECTIONS_MAX = 255;
+
 const indentFor = (depth: number) =>
   Math.min(depth * INDENT_STEP, INDENT_MAX);
 
@@ -64,21 +71,32 @@ const indentFor = (depth: number) =>
  */
 export function ClubLocationsCard({
   locations: saved,
+  clubId,
   addresses,
 }: {
   locations: ClubLocation[];
+  /** The club these belong to, which every save is made against. */
+  clubId: number;
   /** The club's own addresses, which are what a hub can be parented to. */
   addresses: readonly ClubAddress[];
 }) {
   const t = useTranslations("club.locations");
   const tEditing = useTranslations("club.editing");
+  const locale = useLocale();
 
-  // PLACEHOLDER, like the rest of the screen: Save writes back to state here.
   const [locations, setLocations] = useState(saved);
   const [rows, setRows] = useState(saved);
   const [editing, setEditing] = useState(false);
   const [open, setOpen] = useState(true);
   const [query, setQuery] = useState("");
+
+  /** Why the last save didn't go through, already in the member's language. */
+  const [failure, setFailure] = useState<string | undefined>(undefined);
+
+  /** The row whose name and code are open for typing, from its pencil. */
+  const [renaming, setRenaming] = useState<string | null>(null);
+
+  const [saving, startSaving] = useTransition();
 
   /** Branches folded away, by the id of the node that heads them. */
   const [folded, setFolded] = useState<readonly string[]>([]);
@@ -175,11 +193,177 @@ export function ClubLocationsCard({
   function toggleEditing() {
     if (editing) {
       setRows(locations);
+      setRenaming(null);
       setEditing(false);
       return;
     }
 
     begin();
+  }
+
+  /**
+   * What's wrong with a name or code that was typed in, if anything.
+   *
+   * Only rows whose name or code actually changed are checked. The record
+   * already holds duplicates from before there was a rule, and blocking an
+   * unrelated switch because of one of those would strand the whole card.
+   */
+  function firstProblem() {
+    const before = new Map(locations.map((row) => [row.id, row]));
+
+    for (const row of rows) {
+      const was = before.get(row.id);
+      if (!was) continue;
+
+      const count = row.memberBookingCount;
+
+      if (
+        count !== was.memberBookingCount &&
+        count !== null &&
+        (!Number.isInteger(count) || count < 1 || count > COUNT_MAX)
+      ) {
+        return t("countInvalid");
+      }
+
+      if (was.short === row.short && was.name === row.name) continue;
+
+      if (row.name.trim().length === 0) return t("nameRequired");
+
+      const code = row.short.trim();
+
+      if (code.length === 0) return t("shortRequired");
+      if (code.length > SHORT_MAX) return t("shortInvalid");
+      // A dot separates the steps of the shown name, so it can't sit in one.
+      if (/[.\s]/.test(code)) return t("shortInvalid");
+
+      const clash = rows.some(
+        (other) =>
+          other.id !== row.id &&
+          (other.parentLocation ?? "") === (row.parentLocation ?? "") &&
+          other.short.trim().toLowerCase() === code.toLowerCase(),
+      );
+
+      if (clash) return t("shortTaken", { short: code });
+    }
+
+    return undefined;
+  }
+
+  const problem = firstProblem();
+
+  /** The club's id for an address, which the table holds by short code. */
+  function addressIdFor(short: string | null) {
+    if (short === null) return null;
+
+    const address = addresses.find((row) => row.short === short);
+
+    return address ? Number(address.id) : null;
+  }
+
+  /** Only the rows that moved, and on each only the fields that did. */
+  function pendingChanges(): LocationChange[] {
+    const before = new Map(locations.map((row) => [row.id, row]));
+    const changes: LocationChange[] = [];
+
+    for (const row of rows) {
+      const was = before.get(row.id);
+      if (!was) continue;
+
+      const change: LocationChange = { locationId: Number(row.id) };
+      let moved = false;
+
+      if (row.name.trim() !== was.name) {
+        change.name = row.name.trim();
+        moved = true;
+      }
+
+      if (row.short.trim() !== was.short) {
+        change.shortName = row.short.trim();
+        moved = true;
+      }
+
+      if (row.memberBookingCount !== was.memberBookingCount) {
+        change.memberReqToBook = row.memberBookingCount;
+        moved = true;
+      }
+
+      if (row.directions !== was.directions) {
+        change.directions = row.directions?.trim() || null;
+        moved = true;
+      }
+
+      if (row.parentAddress !== was.parentAddress) {
+        change.clubAddressId = addressIdFor(row.parentAddress);
+        moved = true;
+      }
+
+      if (row.parentLocation !== was.parentLocation) {
+        change.parentLocationId =
+          row.parentLocation === null ? null : Number(row.parentLocation);
+        moved = true;
+      }
+
+      if (row.memberBooking !== was.memberBooking) {
+        change.canMemberBook = row.memberBooking;
+        moved = true;
+      }
+
+      if (row.teamMemberBooking !== was.teamMemberBooking) {
+        change.canTeamBook = row.teamMemberBooking;
+        moved = true;
+      }
+
+      if (row.publicListed !== was.publicListed) {
+        change.public = row.publicListed;
+        moved = true;
+      }
+
+      if (row.friends !== was.friends) {
+        change.canFriendshipClubBook = row.friends;
+        moved = true;
+      }
+
+      if (row.active !== was.active) {
+        change.active = row.active;
+        moved = true;
+      }
+
+      if (moved) changes.push(change);
+    }
+
+    return changes;
+  }
+
+  function save() {
+    const changes = pendingChanges();
+
+    if (changes.length === 0) {
+      setRenaming(null);
+      setEditing(false);
+      return;
+    }
+
+    setFailure(undefined);
+
+    startSaving(async () => {
+      const result = await saveLocationsAction({ locale, clubId, changes });
+
+      // What the API now holds, whatever happened: a changed parent or code
+      // recomputes the dotted name of everything below it, so the card can't
+      // work out the new list for itself.
+      if (result.locations) {
+        setLocations(result.locations);
+        setRows(result.locations);
+      }
+
+      if (result.formError !== undefined) {
+        setFailure(result.formError);
+        return;
+      }
+
+      setRenaming(null);
+      setEditing(false);
+    });
   }
 
   function update(id: string, patch: Partial<ClubLocation>) {
@@ -202,6 +386,7 @@ export function ClubLocationsCard({
           // rows you can't see.
           if (closing && editing) {
             setRows(locations);
+            setRenaming(null);
             setEditing(false);
           }
 
@@ -247,13 +432,21 @@ export function ClubLocationsCard({
                   <Th className="w-20">{t("columns.friends")}</Th>
                   <Th className="w-20">{t("columns.active")}</Th>
                   <Th className="w-24">{t("columns.directions")}</Th>
+                  {/* Only while editing - there's nothing to act on in a
+                      read-only table. */}
+                  {editing ? (
+                    <Th className="w-16">{t("columns.actions")}</Th>
+                  ) : null}
                 </tr>
               </thead>
 
               <tbody>
                 {visible.length === 0 ? (
                   <tr>
-                    <td colSpan={12} className="py-8 text-center text-[13px] text-subtle">
+                    <td
+                      colSpan={editing ? 13 : 12}
+                      className="py-8 text-center text-[13px] text-subtle"
+                    >
                       {t("empty")}
                     </td>
                   </tr>
@@ -316,15 +509,40 @@ export function ClubLocationsCard({
                           </span>
                         )}
 
-                        <span className="truncate text-[13px] font-medium text-ink">
-                          {location.name}
-                        </span>
-
+                        {renaming === location.id ? (
+                          <Input
+                            className={cn(compactInput, "min-w-0 flex-1")}
+                            value={location.name}
+                            maxLength={60}
+                            aria-label={t("columns.name")}
+                            onChange={(event) =>
+                              update(location.id, { name: event.target.value })
+                            }
+                          />
+                        ) : (
+                          <span className="truncate text-[13px] font-medium text-ink">
+                            {location.name}
+                          </span>
+                        )}
                       </div>
                     </Td>
 
                     <Td>
-                      <span className="text-[13px] text-body">{location.short}</span>
+                      {renaming === location.id ? (
+                        <Input
+                          className={cn(compactInput, "w-16")}
+                          value={location.short}
+                          maxLength={SHORT_MAX}
+                          aria-label={t("columns.short")}
+                          onChange={(event) =>
+                            update(location.id, { short: event.target.value })
+                          }
+                        />
+                      ) : (
+                        <span className="text-[13px] text-body">
+                          {location.short}
+                        </span>
+                      )}
                     </Td>
 
                     <Td>
@@ -333,15 +551,21 @@ export function ClubLocationsCard({
                       </span>
                     </Td>
 
+                    {/* An address makes it a root; a parent location makes it a
+                        child that inherits one. Either one rules out the other,
+                        so setting one clears it. */}
                     <Td>
                       <RoutingSelect
                         value={location.parentAddress}
                         options={addressOptions}
-                        disabled={!editing}
+                        disabled={!editing || location.parentLocation !== null}
                         label={t("columns.parentAddress")}
                         placeholder={t("none")}
                         onChange={(value) =>
-                          update(location.id, { parentAddress: value })
+                          update(location.id, {
+                            parentAddress: value,
+                            parentLocation: null,
+                          })
                         }
                       />
                     </Td>
@@ -350,16 +574,18 @@ export function ClubLocationsCard({
                       <RoutingSelect
                         value={location.parentLocation}
                         // Not itself. Its descendants are still offered, which
-                        // would make a cycle - the card doesn't save locations
-                        // yet, and guarding it belongs with the call that does.
+                        // would make a cycle - the API is what refuses that.
                         options={locationOptions.filter(
                           (option) => option.value !== location.id,
                         )}
-                        disabled={!editing}
+                        disabled={!editing || location.parentAddress !== null}
                         label={t("columns.parentLocation")}
                         placeholder={t("none")}
                         onChange={(value) =>
-                          update(location.id, { parentLocation: value })
+                          update(location.id, {
+                            parentLocation: value,
+                            parentAddress: null,
+                          })
                         }
                       />
                     </Td>
@@ -373,14 +599,42 @@ export function ClubLocationsCard({
                           disabled={!editing}
                           label={t(`columns.${label}`)}
                           onChange={(checked) =>
-                            update(location.id, { [key]: checked })
+                            update(
+                              location.id,
+                              // Turning member booking off takes the count with
+                              // it: a quota on a location members can't book
+                              // is a number nothing can explain.
+                              key === "memberBooking" && !checked
+                                ? { memberBooking: false, memberBookingCount: null }
+                                : { [key]: checked },
+                            )
                           }
                         />
                       </Td>
                     ))}
 
                     <Td>
-                      {location.memberBookingCount === null ? (
+                      {renaming === location.id ? (
+                        <Input
+                          className={cn(compactInput, "w-16")}
+                          type="number"
+                          min={1}
+                          max={COUNT_MAX}
+                          // A count only means something where members can
+                          // book at all, so it follows that switch.
+                          disabled={!location.memberBooking}
+                          value={location.memberBookingCount ?? ""}
+                          aria-label={t("columns.memberBookingCount")}
+                          onChange={(event) =>
+                            update(location.id, {
+                              memberBookingCount:
+                                event.target.value === ""
+                                  ? null
+                                  : Number(event.target.value),
+                            })
+                          }
+                        />
+                      ) : location.memberBookingCount === null ? (
                         <span className="text-[13px] text-subtle">{t("none")}</span>
                       ) : (
                         <Chip>{location.memberBookingCount}</Chip>
@@ -403,10 +657,48 @@ export function ClubLocationsCard({
                     ))}
 
                     <Td>
-                      <span className="text-[13px] text-subtle">
-                        {location.directions ?? t("none")}
-                      </span>
+                      {renaming === location.id ? (
+                        <Input
+                          className={cn(compactInput, "w-40")}
+                          value={location.directions ?? ""}
+                          maxLength={DIRECTIONS_MAX}
+                          aria-label={t("columns.directions")}
+                          onChange={(event) =>
+                            update(location.id, {
+                              directions: event.target.value || null,
+                            })
+                          }
+                        />
+                      ) : (
+                        <span className="text-[13px] text-subtle">
+                          {location.directions ?? t("none")}
+                        </span>
+                      )}
                     </Td>
+
+                    {editing ? (
+                      <Td>
+                        {/* Opens this row's name and code for typing. */}
+                        <button
+                          type="button"
+                          aria-label={t("editRow", { name: location.name })}
+                          aria-pressed={renaming === location.id}
+                          onClick={() =>
+                            setRenaming(
+                              renaming === location.id ? null : location.id,
+                            )
+                          }
+                          className={cn(
+                            "inline-flex size-7 items-center justify-center rounded-md transition-colors outline-none hover:bg-badge hover:text-ink focus-visible:ring-2 focus-visible:ring-ring/40",
+                            renaming === location.id
+                              ? "bg-badge text-ink"
+                              : "text-ink-muted",
+                          )}
+                        >
+                          <Icon name="edit" size="xs" />
+                        </button>
+                      </Td>
+                    ) : null}
                   </tr>
                   );
                 })}
@@ -419,16 +711,20 @@ export function ClubLocationsCard({
               // What's happened, not just what's possible: once something has
               // actually moved, the bar says so.
               message={dirty ? t("unsaved") : t("editing")}
+              // A name or code that was just typed and can't be sent is worth
+              // saying before the API does.
+              error={problem ?? failure}
+              pending={saving}
+              saveDisabled={problem !== undefined}
               cancelLabel={tEditing("cancel")}
               saveLabel={tEditing("save")}
               onCancel={() => {
                 setRows(locations);
+                setFailure(undefined);
+                setRenaming(null);
                 setEditing(false);
               }}
-              onSave={() => {
-                setLocations(rows);
-                setEditing(false);
-              }}
+              onSave={save}
             />
           ) : null}
         </>

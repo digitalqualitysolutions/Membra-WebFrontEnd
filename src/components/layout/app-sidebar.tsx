@@ -191,7 +191,7 @@ export function AppSidebar({ locale }: { locale: Locale }) {
           aria-controls={SIDEBAR_ID}
           aria-expanded={open}
           aria-label={open ? t("closeMenu") : t("openMenu")}
-          className="absolute top-16 -right-3.5 z-20 hidden size-7 -translate-y-1/2 items-center justify-center rounded-[50%] border border-line-strong bg-surface text-ink-muted transition-colors outline-none hover:border-separator hover:text-ink focus-visible:ring-2 focus-visible:ring-ring/40 md:inline-flex"
+          className="absolute top-16 -right-3.5 z-20 hidden size-7 -translate-y-1/2 items-center justify-center rounded-[50%] border border-line-strong bg-sidebar text-ink-muted transition-colors outline-none hover:border-separator hover:text-ink focus-visible:ring-2 focus-visible:ring-ring/40 md:inline-flex"
         >
           <Icon name={open ? "collapse" : "expand"} size="lg" />
         </button>

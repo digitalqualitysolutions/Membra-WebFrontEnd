@@ -130,7 +130,11 @@ export function ClubScreen({
 
         {/* The club's own addresses go along: a hub is parented to one of
             them, so the dropdown offers what the card above already has. */}
-        <ClubLocationsCard locations={locations} addresses={club.addresses} />
+        <ClubLocationsCard
+          locations={locations}
+          clubId={club.id}
+          addresses={club.addresses}
+        />
       </div>
     </>
   );

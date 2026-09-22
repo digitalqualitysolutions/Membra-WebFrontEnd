@@ -1,3 +1,5 @@
+import type { ClubLocation } from "@/features/club/types";
+
 /**
  * Shapes passed between the locations card and its Server Action.
  *
@@ -54,6 +56,45 @@ export type CreatedLocation = {
   short: string;
   /** The dotted code the API composed for it: `HH.i.1`. */
   show: string;
+};
+
+/**
+ * One row's changes, as the locations card holds them.
+ *
+ * Only what that card can edit. Left out means "leave as it is", so a row
+ * where one switch moved sends one field.
+ */
+export type LocationChange = {
+  locationId: number;
+  name?: string;
+  shortName?: string;
+  /** 1-30, or null where member booking is off. */
+  memberReqToBook?: number | null;
+  directions?: string | null;
+  clubAddressId?: number | null;
+  parentLocationId?: number | null;
+  canMemberBook?: boolean;
+  canTeamBook?: boolean;
+  public?: boolean;
+  canFriendshipClubBook?: boolean;
+  active?: boolean;
+};
+
+export type SaveLocationsPayload = {
+  locale: string;
+  clubId: number;
+  changes: LocationChange[];
+};
+
+export type SaveLocationsState = {
+  /** Why the save stopped, if it did. */
+  formError?: string;
+  /**
+   * The club's locations as the API now holds them - after a failure as much
+   * as a success. Re-read rather than patched locally: changing a parent makes
+   * the API recompute the dotted name of everything below it.
+   */
+  locations?: ClubLocation[];
 };
 
 export type CreateLocationState = {

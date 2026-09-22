@@ -8,8 +8,10 @@ import {
   createLocationRequestSchema,
   locationResponseSchema,
   locationsListResponseSchema,
+  updateLocationRequestSchema,
   type CreateLocationRequest,
   type LocationResponse,
+  type UpdateLocationRequest,
 } from "@/features/club/api/location-wire";
 import { api, requestBody } from "@/lib/http/api";
 
@@ -75,6 +77,32 @@ export async function createLocation(
   const { data } = await api(locationResponseSchema, path, {
     method: "POST",
     body: requestBody(createLocationRequestSchema, path, body),
+    headers: withSession(sessionToken),
+  });
+
+  return data;
+}
+
+/**
+ * Change some of a location's fields; the rest stay as they are.
+ *
+ * A new `shortName` or `parentLocationId` makes the API recompute `shownName`
+ * here and on every descendant, so the caller re-reads the list afterwards.
+ *
+ * @throws {ApiError} 400 for a value refused, 403 without admin rights, 404
+ *   for no such club or location.
+ */
+export async function updateLocation(
+  clubId: number,
+  locationId: number,
+  body: UpdateLocationRequest,
+  sessionToken: string,
+): Promise<LocationResponse> {
+  const path = `/clubs/${segment(clubId)}/locations/${segment(locationId)}`;
+
+  const { data } = await api(locationResponseSchema, path, {
+    method: "PATCH",
+    body: requestBody(updateLocationRequestSchema, path, body),
     headers: withSession(sessionToken),
   });
 

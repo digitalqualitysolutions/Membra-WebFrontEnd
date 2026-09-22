@@ -51,6 +51,19 @@ export const createLocationRequestSchema = z.object({
 
 export type CreateLocationRequest = z.infer<typeof createLocationRequestSchema>;
 
+/**
+ * What `PATCH /clubs/{clubId}/locations/{locationId}` accepts: any of the
+ * create fields on their own, the rest left as they are.
+ *
+ * Changing `shortName` or `parentLocationId` makes the API recompute
+ * `shownName` for the location and everything under it, so a caller has to
+ * re-read the list rather than patch its own copy.
+ */
+export const updateLocationRequestSchema =
+  createLocationRequestSchema.partial();
+
+export type UpdateLocationRequest = z.infer<typeof updateLocationRequestSchema>;
+
 /* ------------------------------------------------------------------------ */
 /* What comes back                                                           */
 /* ------------------------------------------------------------------------ */
