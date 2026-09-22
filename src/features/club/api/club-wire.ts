@@ -129,6 +129,23 @@ export const clubResponseSchema = z.object({
   addresses: z.array(clubAddressSchema),
   /** How many admins the club has. Was a list of their ids until 2026-09-17. */
   adminCount: z.number().int(),
+  /**
+   * The club's logo, and the one place this record disagrees with its own spec.
+   *
+   * `GET /clubs/{id}` sends `avatar`: a single signed URL, already the 96px
+   * variant - which is exactly the one the UI wants. The OpenAPI document
+   * declares `avatars`, an `{avatar1, avatar2, avatar3}` object, the way the
+   * member record and `GET /clubs/{id}/avatars` both really do answer.
+   *
+   * Both are accepted, because either could be the one that changes: reading
+   * only `avatar` would lose the logo again the day the API is corrected to
+   * match its spec, and reading only `avatars` is what was losing it until
+   * now. Whichever arrives, the picture shows.
+   *
+   * Still `.catch(null)` on each, so a shape nobody predicted costs a
+   * thumbnail rather than the whole club record.
+   */
+  avatar: z.string().nullish().catch(null),
   avatars: avatarsResponseSchema.nullish().catch(null),
 });
 
@@ -208,9 +225,13 @@ export function toClubDetails(
     })),
     country: { code: club.countryCode, name: countryName(club.countryCode) },
     addresses: club.addresses.map(toClubAddress),
-    // The 96px variant: the logo shows at 40px, and 96 stays sharp on a
-    // high-density screen where the 32px one wouldn't.
-    avatar: avatars.medium ?? avatars.large,
+    /*
+     * Whichever of the two the API sent - see the note on the schema. The
+     * single `avatar` is already the 96px one; out of the trio that's the
+     * variant to take, since the logo draws at 40px and 96 stays sharp on a
+     * high-density screen where the 32px one wouldn't.
+     */
+    avatar: club.avatar ?? avatars.medium ?? avatars.large,
   };
 }
 

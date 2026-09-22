@@ -32,12 +32,33 @@ const avatarImageHost =
  * rendering and generating a nonce per request in `proxy.ts`, so it's a trade
  * against static delivery rather than an oversight. Everything else is closed.
  *
- * Dev needs two things production doesn't: React uses `eval` for its debugging,
- * and hot reload talks over a websocket.
+ * `'unsafe-eval'` used to be dev-only, for React's debugging. It is now on
+ * everywhere because the HEIC converter can't run without it - see the note on
+ * the directive itself, which is the one worth reading before adding anything
+ * else here.
+ *
+ * Dev still needs one thing production doesn't: hot reload talks over a
+ * websocket.
  */
 const contentSecurityPolicy = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+  /*
+   * `'unsafe-eval'` is here for `heic2any`, and it is the weakest line in this
+   * header. The decoder is Emscripten-compiled libheif, and its binding glue
+   * builds functions with `new Function` at runtime - so the directive that
+   * blocks an injected `eval` blocks the HEIC converter with it. There is no
+   * flag to turn that off; it's how the build is made.
+   *
+   * Worth knowing the alternative: `heic-to/csp` is the same library compiled
+   * to WebAssembly instead, and needs only `'wasm-unsafe-eval'`, which permits
+   * wasm compilation and nothing else. Swapping to it would let this come back
+   * out. Until then, everything an attacker needs to run injected script is
+   * one XSS away rather than two.
+   */
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  // The converter runs libheif off the main thread, in a worker it builds from
+  // a blob. Without this the worker is refused and the conversion never starts.
+  "worker-src 'self' blob:",
   // Tailwind ships a stylesheet, but `next/font` and React still emit inline
   // style attributes. Injected styles are a much weaker vector than injected
   // scripts, which is why this is where most people stop tightening.

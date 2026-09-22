@@ -44,6 +44,7 @@ import {
   compactTrigger,
 } from "@/features/club/components/record-parts";
 import { createClubAction } from "@/features/club/services/create-club";
+import { usePhotoCropLabels } from "@/features/onboarding/components/crop-dialog";
 import {
   initialCreateClubState,
   type NewAddressValues,
@@ -87,6 +88,7 @@ export function ClubSetup({
 }) {
   const t = useTranslations("club");
   const locale = useLocale();
+  const cropLabels = usePhotoCropLabels();
 
   const [filling, setFilling] = useState(false);
 
@@ -353,6 +355,7 @@ export function ClubSetup({
               removeLabel={t("fields.remove")}
               formatsLabel={t("fields.uploadFormats")}
               invalidLabel={t("fields.avatarInvalid")}
+              cropLabels={cropLabels}
             />
           </Field>
         </div>

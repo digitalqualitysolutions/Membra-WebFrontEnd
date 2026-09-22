@@ -2,33 +2,23 @@
 
 import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
-import {
-  startTransition,
-  useActionState,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ChangeEvent,
-} from "react";
+import { startTransition, useActionState, useCallback, useRef } from "react";
 
 import { Icon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
-import { createPhotoSchema, photoAccept } from "@/features/onboarding/schemas";
+import {
+  CropDialog,
+  usePhotoCropLabels,
+} from "@/features/onboarding/components/crop-dialog";
+import { photoAccept } from "@/features/onboarding/schemas";
 import { initialPhotoState } from "@/features/onboarding/services/state";
 import { uploadPhotoAction } from "@/features/onboarding/services/upload-photo";
+import { usePhotoPicker } from "@/features/onboarding/use-photo-picker";
 
 export function PhotoPicker() {
   const t = useTranslations("onboarding");
-  const tValidation = useTranslations("validation");
   const locale = useLocale();
-
-  const schema = useMemo(() => createPhotoSchema(tValidation), [tValidation]);
-
-  const [preview, setPreview] = useState<string | null>(null);
-  /** Kept so a failed upload can go again without finding the file twice. */
-  const [file, setFile] = useState<File | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const cropLabels = usePhotoCropLabels();
 
   /*
    * The action redirects home when the upload lands, so this state only ever
@@ -40,6 +30,15 @@ export function PhotoPicker() {
     initialPhotoState,
   );
 
+  // Stable, because the hook holds it in a callback of its own.
+  const send = useCallback(
+    (photo: File) => startTransition(() => upload({ photo, locale })),
+    [upload, locale],
+  );
+
+  const picker = usePhotoPicker({ onReady: send });
+  const { preview, file, error } = picker;
+
   /*
    * Two inputs, because the two buttons want different things. `capture="user"`
    * sends a phone straight to its front camera, which is wrong for "find a
@@ -48,51 +47,6 @@ export function PhotoPicker() {
    */
   const cameraInput = useRef<HTMLInputElement>(null);
   const libraryInput = useRef<HTMLInputElement>(null);
-
-  // Object URLs stay alive until revoked. Drop the previous one as soon as it's
-  // replaced, and the last one when the screen goes.
-  const objectUrl = useRef<string | null>(null);
-
-  useEffect(
-    () => () => {
-      if (objectUrl.current) URL.revokeObjectURL(objectUrl.current);
-    },
-    [],
-  );
-
-  function send(photo: File) {
-    startTransition(() => upload({ photo, locale }));
-  }
-
-  function handleFile(event: ChangeEvent<HTMLInputElement>) {
-    const picked = event.target.files?.[0];
-
-    // Reset the input, or picking the same file twice won't fire a change.
-    event.target.value = "";
-    if (!picked) return;
-
-    const result = schema.safeParse(picked);
-
-    if (!result.success) {
-      setError(result.error.issues[0]?.message ?? null);
-      return;
-    }
-
-    if (objectUrl.current) URL.revokeObjectURL(objectUrl.current);
-    objectUrl.current = URL.createObjectURL(result.data);
-
-    setPreview(objectUrl.current);
-    setFile(result.data);
-    setError(null);
-
-    /*
-     * Sent straight away, no confirm step. There is nothing to decide between
-     * choosing a picture and keeping it: the preview appears with the upload
-     * already running under it, and a member who dislikes what they see picks
-     * again, which replaces it.
-     */
-    send(result.data);
-  }
 
   /** Ours when the file never left, the action's when the API turned it down. */
   const message = error ?? (isPending ? null : state.error);
@@ -104,14 +58,14 @@ export function PhotoPicker() {
         type="file"
         accept={photoAccept}
         capture="user"
-        onChange={handleFile}
+        onChange={picker.pick}
         className="hidden"
       />
       <input
         ref={libraryInput}
         type="file"
         accept={photoAccept}
-        onChange={handleFile}
+        onChange={picker.pick}
         className="hidden"
       />
 
@@ -140,10 +94,12 @@ export function PhotoPicker() {
           * Over the picture rather than beside it. The picture is what's being
           * waited on, and this way the card doesn't move while it waits.
           */}
-        {isPending ? (
+        {isPending || picker.converting ? (
           <span
             role="status"
-            aria-label={t("photo.uploading")}
+            aria-label={
+              picker.converting ? t("photo.preparing") : t("photo.uploading")
+            }
             className="absolute inset-0 flex items-center justify-center rounded-full bg-ink/65 text-on-ink"
           >
             <Icon
@@ -156,7 +112,7 @@ export function PhotoPicker() {
         <button
           type="button"
           onClick={() => libraryInput.current?.click()}
-          disabled={isPending}
+          disabled={isPending || picker.converting}
           aria-label={t("photo.change")}
           className="absolute right-0 bottom-1 flex size-[clamp(1.75rem,4.5vh,2.25rem)] items-center justify-center rounded-full border-2 border-surface bg-ink text-on-ink transition-colors hover:bg-ink-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:opacity-60"
         >
@@ -165,7 +121,11 @@ export function PhotoPicker() {
       </div>
 
       <p className="mt-[clamp(0.5rem,1.75vh,1rem)] text-[12px] text-subtle sm:text-[13px]">
-        {isPending ? t("photo.uploading") : t("photo.formats")}
+        {picker.converting
+          ? t("photo.preparing")
+          : isPending
+            ? t("photo.uploading")
+            : t("photo.formats")}
       </p>
 
       {message ? (
@@ -182,7 +142,7 @@ export function PhotoPicker() {
           * them go and find it a second time.
           */}
         {file && state.error && !error && !isPending ? (
-          <Button type="button" size="form" onClick={() => send(file)}>
+          <Button type="button" size="form" onClick={picker.retry}>
             <Icon name="retry" />
             {t("photo.retry")}
           </Button>
@@ -191,7 +151,7 @@ export function PhotoPicker() {
         <Button
           type="button"
           size="form"
-          disabled={isPending}
+          disabled={isPending || picker.converting}
           onClick={() => cameraInput.current?.click()}
         >
           <Icon name="camera" />
@@ -202,7 +162,7 @@ export function PhotoPicker() {
           type="button"
           variant="outline"
           size="form"
-          disabled={isPending}
+          disabled={isPending || picker.converting}
           onClick={() => libraryInput.current?.click()}
         >
           <Icon name="photoLibrary" />
@@ -232,6 +192,15 @@ export function PhotoPicker() {
           {t("skip")}
         </Link>
       </Button>
+
+      {picker.pending ? (
+        <CropDialog
+          source={picker.pending.source}
+          labels={cropLabels}
+          onCancel={picker.cancelCrop}
+          onConfirm={picker.confirmCrop}
+        />
+      ) : null}
     </div>
   );
 }

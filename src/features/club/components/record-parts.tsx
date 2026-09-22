@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent, ReactNode } from "react";
 
 import { Icon } from "@/components/icons";
@@ -13,6 +13,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { ClubLanguageOption } from "@/features/club/api/club-wire";
+import {
+  CropDialog,
+  type CropLabels,
+} from "@/features/onboarding/components/crop-dialog";
+import { cropToFile, type CropArea } from "@/features/onboarding/crop-image";
+import { isHeic, toCroppable } from "@/features/onboarding/heic";
 import {
   isAcceptedPhoto,
   maxPhotoBytes,
@@ -378,6 +384,7 @@ export function ClubAvatarPicker({
   removeLabel,
   formatsLabel,
   invalidLabel,
+  cropLabels,
   allowRemove = true,
 }: {
   value: string | null;
@@ -393,6 +400,11 @@ export function ClubAvatarPicker({
   formatsLabel: string;
   invalidLabel: string;
   /**
+   * Wording for the crop step, as one object rather than seven more props.
+   * Injected like the rest - this component does its own translating nowhere.
+   */
+  cropLabels: CropLabels;
+  /**
    * Off where there's nothing to remove it with: the API can replace a saved
    * club's logo but has no call to delete one.
    */
@@ -400,8 +412,43 @@ export function ClubAvatarPicker({
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [invalid, setInvalid] = useState(false);
+  /** A HEIC is being decoded into something the cropper can draw. */
+  const [converting, setConverting] = useState(false);
 
-  function pick(event: ChangeEvent<HTMLInputElement>) {
+  /**
+   * The logo waiting to be framed, while the crop dialog is open.
+   *
+   * The `File` is held here rather than read back off the input, which `pick`
+   * clears so that choosing the same file twice still fires a change.
+   */
+  const [pending, setPending] = useState<{ source: string; file: File } | null>(
+    null,
+  );
+
+  /*
+   * The one object URL this component owns. The preview it hands upward is
+   * still a `data:` URL for the reason in the doc comment above; this is only
+   * what the cropper reads from, and it dies with the dialog.
+   */
+  const sourceUrl = useRef<string | null>(null);
+
+  function dropSource() {
+    if (sourceUrl.current) URL.revokeObjectURL(sourceUrl.current);
+    sourceUrl.current = null;
+  }
+
+  useEffect(() => dropSource, []);
+
+  /** Read it as a `data:` URL and hand both halves up. The end of every path. */
+  function publish(file: File) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") onChange(reader.result, file);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function pick(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
 
     // Cleared so picking the same file again still fires a change.
@@ -419,11 +466,49 @@ export function ClubAvatarPicker({
 
     setInvalid(false);
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") onChange(reader.result, file);
-    };
-    reader.readAsDataURL(file);
+    // A HEIC can't be drawn, so it's decoded first - slow enough on a big
+    // picture that the button says what it's doing.
+    let source = file;
+
+    if (isHeic(source)) {
+      setConverting(true);
+
+      try {
+        source = await toCroppable(source);
+      } catch {
+        setConverting(false);
+        publish(file);
+        return;
+      }
+
+      setConverting(false);
+    }
+
+    dropSource();
+    sourceUrl.current = URL.createObjectURL(source);
+    setPending({ source: sourceUrl.current, file: source });
+  }
+
+  async function confirmCrop(area: CropArea, rotation: number) {
+    const current = pending;
+    setPending(null);
+
+    if (!current) return;
+
+    try {
+      publish(
+        await cropToFile(current.source, area, rotation, current.file.name),
+      );
+    } catch {
+      /*
+       * Canvas couldn't decode it - HEIC, realistically, which only Safari
+       * reads. The API takes the file as it is, so it goes up uncropped
+       * rather than being refused over a crop nobody asked to be mandatory.
+       */
+      publish(current.file);
+    } finally {
+      dropSource();
+    }
   }
 
   return (
@@ -445,10 +530,15 @@ export function ClubAvatarPicker({
           type="button"
           variant="outline"
           size="sm"
+          disabled={converting}
           onClick={() => input.current?.click()}
         >
-          <Icon name="upload" size="xs" />
-          {value ? replaceLabel : uploadLabel}
+          {converting ? (
+            <Icon name="pending" size="xs" className="animate-spin" />
+          ) : (
+            <Icon name="upload" size="xs" />
+          )}
+          {converting ? cropLabels.preparing : value ? replaceLabel : uploadLabel}
         </Button>
 
         {value && allowRemove ? (
@@ -472,6 +562,18 @@ export function ClubAvatarPicker({
         <p role="alert" className="mt-2 text-[12px] text-danger">
           {invalidLabel}
         </p>
+      ) : null}
+
+      {pending ? (
+        <CropDialog
+          source={pending.source}
+          labels={cropLabels}
+          onCancel={() => {
+            setPending(null);
+            dropSource();
+          }}
+          onConfirm={confirmCrop}
+        />
       ) : null}
     </div>
   );

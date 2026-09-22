@@ -4,11 +4,8 @@ import { useLocale, useTranslations } from "next-intl";
 import {
   startTransition,
   useActionState,
-  useEffect,
-  useMemo,
+  useCallback,
   useRef,
-  useState,
-  type ChangeEvent,
   type RefObject,
 } from "react";
 
@@ -21,8 +18,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { SessionUser } from "@/features/auth/api/auth-wire";
 import { MemberAvatar } from "@/features/auth/components/member-avatar";
-import { createPhotoSchema, photoAccept } from "@/features/onboarding/schemas";
+import {
+  CropDialog,
+  usePhotoCropLabels,
+} from "@/features/onboarding/components/crop-dialog";
+import { photoAccept } from "@/features/onboarding/schemas";
 import { initialPhotoState } from "@/features/onboarding/services/state";
+import { usePhotoPicker } from "@/features/onboarding/use-photo-picker";
 import { updateAvatarAction } from "@/features/profile/services/update-avatar";
 
 /**
@@ -50,21 +52,22 @@ export function AvatarEditor({
   savedLabel: string;
 }) {
   const t = useTranslations("onboarding");
-  const tValidation = useTranslations("validation");
   const locale = useLocale();
-
-  const schema = useMemo(() => createPhotoSchema(tValidation), [tValidation]);
-
-  /** The file they just picked, shown straight away rather than after a round trip. */
-  const [preview, setPreview] = useState<string | null>(null);
-  /** Kept so a failed upload can go again without finding the file twice. */
-  const [file, setFile] = useState<File | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const cropLabels = usePhotoCropLabels();
 
   const [state, upload, isPending] = useActionState(
     updateAvatarAction,
     initialPhotoState,
   );
+
+  // Stable, because the hook holds it in a callback of its own.
+  const send = useCallback(
+    (photo: File) => startTransition(() => upload({ photo, locale })),
+    [upload, locale],
+  );
+
+  const picker = usePhotoPicker({ onReady: send });
+  const { preview, file, error } = picker;
 
   /*
    * Two inputs, because the two answers want different things. `capture="user"`
@@ -75,21 +78,6 @@ export function AvatarEditor({
   const cameraInput = useRef<HTMLInputElement>(null);
   const libraryInput = useRef<HTMLInputElement>(null);
 
-  // Object URLs stay alive until revoked. Drop the previous one as soon as it's
-  // replaced, and the last one when the screen goes.
-  const objectUrl = useRef<string | null>(null);
-
-  useEffect(
-    () => () => {
-      if (objectUrl.current) URL.revokeObjectURL(objectUrl.current);
-    },
-    [],
-  );
-
-  function send(photo: File) {
-    startTransition(() => upload({ photo, locale }));
-  }
-
   /*
    * Deferred by a tick, on purpose. Choosing an item closes the menu, and Radix
    * moves focus back to the trigger on the way out; opening the file dialog in
@@ -99,33 +87,6 @@ export function AvatarEditor({
    */
   function openPicker(input: RefObject<HTMLInputElement | null>) {
     setTimeout(() => input.current?.click(), 0);
-  }
-
-  function handleFile(event: ChangeEvent<HTMLInputElement>) {
-    const picked = event.target.files?.[0];
-
-    // Reset the input, or picking the same file twice won't fire a change.
-    event.target.value = "";
-    if (!picked) return;
-
-    const result = schema.safeParse(picked);
-
-    if (!result.success) {
-      setError(result.error.issues[0]?.message ?? null);
-      return;
-    }
-
-    if (objectUrl.current) URL.revokeObjectURL(objectUrl.current);
-    objectUrl.current = URL.createObjectURL(result.data);
-
-    setPreview(objectUrl.current);
-    setFile(result.data);
-    setError(null);
-
-    // Sent straight away, no confirm step - same as onboarding. There's nothing
-    // to decide between choosing a picture and keeping it, and a member who
-    // dislikes what they see picks again, which replaces it.
-    send(result.data);
   }
 
   /*
@@ -146,14 +107,14 @@ export function AvatarEditor({
         type="file"
         accept={photoAccept}
         capture="user"
-        onChange={handleFile}
+        onChange={picker.pick}
         className="hidden"
       />
       <input
         ref={libraryInput}
         type="file"
         accept={photoAccept}
-        onChange={handleFile}
+        onChange={picker.pick}
         className="hidden"
       />
 
@@ -171,10 +132,12 @@ export function AvatarEditor({
           * Over the picture rather than beside it. The picture is what's being
           * waited on, and this way the card doesn't move while it waits.
           */}
-        {isPending ? (
+        {isPending || picker.converting ? (
           <span
             role="status"
-            aria-label={t("photo.uploading")}
+            aria-label={
+              picker.converting ? t("photo.preparing") : t("photo.uploading")
+            }
             className="absolute inset-0 flex items-center justify-center rounded-full bg-ink/65 text-on-ink"
           >
             <Icon name="pending" className="size-5 animate-spin" />
@@ -188,7 +151,7 @@ export function AvatarEditor({
           */}
         <DropdownMenu>
           <DropdownMenuTrigger
-            disabled={isPending}
+            disabled={isPending || picker.converting}
             aria-label={t("photo.change")}
             className="absolute right-0 bottom-0 flex size-[clamp(1.375rem,3.5vh,1.625rem)] items-center justify-center rounded-full border-2 border-surface bg-ink text-on-ink transition-colors outline-none hover:bg-ink-soft focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:opacity-60"
           >
@@ -238,12 +201,21 @@ export function AvatarEditor({
       {file && state.error && !error && !isPending ? (
         <button
           type="button"
-          onClick={() => send(file)}
+          onClick={picker.retry}
           className="mt-1.5 inline-flex items-center gap-1.5 text-[12px] font-medium text-ink underline underline-offset-2 hover:text-ink-soft"
         >
           <Icon name="retry" size="sm" />
           {t("photo.retry")}
         </button>
+      ) : null}
+
+      {picker.pending ? (
+        <CropDialog
+          source={picker.pending.source}
+          labels={cropLabels}
+          onCancel={picker.cancelCrop}
+          onConfirm={picker.confirmCrop}
+        />
       ) : null}
     </div>
   );

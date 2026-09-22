@@ -176,12 +176,14 @@ export function AppSidebar({ locale }: { locale: Locale }) {
          *
          * `top-16` is where those rules sit and `-right-3.5` is half its
          * width; the two shifts by half its own size centre it on the meeting
-         * point rather than hanging it off either line. No
-         * outline and no shadow — but it carries the header's own fill, which
-         * is the one thing it can't do without: the border would otherwise
-         * run straight through the gap between the two chevrons. The fill is
-         * what breaks the line cleanly for the width of the glyph, and the
-         * z-index is for the half that hangs over the page.
+         * point rather than hanging it off either line.
+         *
+         * Bordered, so it reads as a control rather than a glyph that happens
+         * to be sitting on the seam - hanging half over the page, an unbounded
+         * pair of chevrons looks like part of the rule it's crossing. The fill
+         * is what that border needs to work: without it the seam would run
+         * straight through the gap between the two chevrons and out the other
+         * side. The z-index is for the half that overhangs the page.
          */}
         <button
           type="button"
@@ -189,7 +191,7 @@ export function AppSidebar({ locale }: { locale: Locale }) {
           aria-controls={SIDEBAR_ID}
           aria-expanded={open}
           aria-label={open ? t("closeMenu") : t("openMenu")}
-          className="absolute top-16 -right-3.5 z-20 hidden size-7 -translate-y-1/2 items-center justify-center rounded-lg bg-surface text-ink-muted transition-colors outline-none hover:text-ink focus-visible:ring-2 focus-visible:ring-ring/40 md:inline-flex"
+          className="absolute top-16 -right-3.5 z-20 hidden size-7 -translate-y-1/2 items-center justify-center rounded-[50%] border border-line-strong bg-surface text-ink-muted transition-colors outline-none hover:border-separator hover:text-ink focus-visible:ring-2 focus-visible:ring-ring/40 md:inline-flex"
         >
           <Icon name={open ? "collapse" : "expand"} size="lg" />
         </button>

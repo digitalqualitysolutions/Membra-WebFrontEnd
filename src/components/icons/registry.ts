@@ -32,6 +32,7 @@ import {
   MonitorSmartphone,
   Network,
   RotateCcw,
+  RotateCw,
   Search,
   Settings,
   ShieldCheck,
@@ -45,6 +46,8 @@ import {
   Users,
   UsersRound,
   X,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 import type { ComponentType, SVGProps } from "react";
 
@@ -167,6 +170,15 @@ export const icons = {
   pending: LoaderCircle,
   /** Runs the same action again after it failed. */
   retry: RotateCcw,
+
+  /* Cropping a picture */
+  /** Turns the picture a quarter anticlockwise. Shares a glyph with `retry`,
+      which is the same arrow doing a different job - both are correct. */
+  rotateLeft: RotateCcw,
+  rotateRight: RotateCw,
+  /** The ends of the zoom slider. */
+  zoomOut: ZoomOut,
+  zoomIn: ZoomIn,
 } satisfies Record<string, IconComponent>;
 
 export type IconName = keyof typeof icons;

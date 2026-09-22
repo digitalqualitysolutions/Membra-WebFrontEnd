@@ -20,6 +20,7 @@ import type {
 } from "@/features/club/api/club-wire";
 import { ActivityPicker } from "@/features/club/components/activity-picker";
 import { ClampedNames } from "@/features/club/components/clamped-names";
+import { usePhotoCropLabels } from "@/features/onboarding/components/crop-dialog";
 import { Tagged } from "@/features/club/components/form-field";
 import {
   Cell,
@@ -108,6 +109,7 @@ export function ClubDetailsCard({
 }) {
   const t = useTranslations("club");
   const locale = useLocale();
+  const cropLabels = usePhotoCropLabels();
 
   const [mode, setMode] = useState<Mode>({ kind: "read" });
   const [values, setValues] = useState(() => valuesOf(club));
@@ -568,6 +570,7 @@ export function ClubDetailsCard({
               removeLabel={t("fields.remove")}
               formatsLabel={t("fields.uploadFormats")}
               invalidLabel={t("fields.avatarInvalid")}
+              cropLabels={cropLabels}
               // The API can replace a club's logo but not delete one.
               allowRemove={false}
             />

@@ -141,6 +141,18 @@ export const da: Dictionary = {
       findPhoto: "Find billede",
       uploading: "Gemmer dit billede…",
       retry: "Prøv igen",
+      cropTitle: "Placer dit billede",
+      cropDescription:
+        "Træk for at flytte, og zoom indtil cirklen viser det, du vil have. Zoom ud for at beholde hele billedet.",
+      zoom: "Zoom",
+      zoomOut: "Zoom ud",
+      zoomIn: "Zoom ind",
+      rotateLeft: "Drej mod venstre",
+      rotateRight: "Drej mod højre",
+      cropReset: "Nulstil",
+      preparing: "Forbereder…",
+      cropCancel: "Annuller",
+      cropConfirm: "Brug dette billede",
     },
   },
 

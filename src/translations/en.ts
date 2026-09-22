@@ -151,6 +151,21 @@ export const en = {
       findPhoto: "Find photo",
       uploading: "Saving your picture…",
       retry: "Try again",
+      /* Framing the picture. Shown for club logos too, worded to suit both. */
+      cropTitle: "Position your picture",
+      cropDescription:
+        "Drag to move, and zoom until the circle holds what you want. Zoom out to keep the whole picture.",
+      /** On the slider's handle, which has no visible label beside it. */
+      zoom: "Zoom",
+      zoomOut: "Zoom out",
+      zoomIn: "Zoom in",
+      rotateLeft: "Rotate left",
+      rotateRight: "Rotate right",
+      cropReset: "Reset",
+      /** While an iPhone picture is being decoded, which takes a moment. */
+      preparing: "Preparing…",
+      cropCancel: "Cancel",
+      cropConfirm: "Use this picture",
     },
   },
 
