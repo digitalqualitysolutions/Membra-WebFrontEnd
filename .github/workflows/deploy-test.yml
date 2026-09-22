@@ -1,0 +1,104 @@
+name: Deploy test
+
+on:
+  push:
+    branches:
+      - develop
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-test
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: test
+    permissions:
+      contents: read
+    env:
+      SCW_ACCESS_KEY: ${{ secrets.SCW_ACCESS_KEY }}
+      SCW_SECRET_KEY: ${{ secrets.SCW_SECRET_KEY }}
+      SCW_DEFAULT_ORGANIZATION_ID: ${{ secrets.SCW_DEFAULT_ORGANIZATION_ID }}
+      SCW_DEFAULT_PROJECT_ID: ${{ secrets.SCW_DEFAULT_PROJECT_ID }}
+      SCW_DEFAULT_REGION: ${{ secrets.SCW_DEFAULT_REGION }}
+      API_BASE_URL: https://build-placeholder.invalid/api
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+
+      - name: Login to Scaleway Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.CONTAINER_REGISTRY_ENDPOINT }}
+          username: nologin
+          password: ${{ secrets.SCW_SECRET_KEY }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          provenance: false
+          sbom: false
+          tags: |
+            ${{ secrets.CONTAINER_REGISTRY_ENDPOINT }}/membra-frontend:${{ github.sha }}
+            ${{ secrets.CONTAINER_REGISTRY_ENDPOINT }}/membra-frontend:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Install Scaleway CLI
+        run: |
+          set -euo pipefail
+          version="2.62.0"
+          curl -fsSL "https://github.com/scaleway/scaleway-cli/releases/download/v${version}/scaleway-cli_${version}_linux_amd64" -o /usr/local/bin/scw
+          chmod +x /usr/local/bin/scw
+
+      - name: Update Serverless Container image
+        env:
+          SCW_CONTAINER_ID: ${{ secrets.SCW_CONTAINER_ID }}
+          IMAGE: ${{ secrets.CONTAINER_REGISTRY_ENDPOINT }}/membra-frontend:${{ github.sha }}
+        run: |
+          set -euo pipefail
+          region="${SCW_DEFAULT_REGION:-nl-ams}"
+          scw container container update "${SCW_CONTAINER_ID}" image="${IMAGE}" region="${region}" -o json \
+            | jq '{id, name, status, error_message}'
+
+          for _ in $(seq 1 60); do
+            payload="$(scw container container get "${SCW_CONTAINER_ID}" region="${region}" -o json)"
+            status="$(echo "${payload}" | jq -r '.status')"
+            error_message="$(echo "${payload}" | jq -r '.error_message // empty')"
+            echo "container status: ${status}"
+            if [ -n "${error_message}" ]; then
+              echo "container error: ${error_message}"
+            fi
+            if [ "${status}" = "ready" ]; then
+              exit 0
+            fi
+            if [ "${status}" = "error" ]; then
+              echo "Container entered error status"
+              exit 1
+            fi
+            sleep 5
+          done
+
+          echo "Timed out waiting for container to become ready"
+          exit 1
+
+      - name: Smoke check health endpoint
+        env:
+          CONTAINER_HEALTH_URL: ${{ secrets.CONTAINER_HEALTH_URL }}
+        run: |
+          set -euo pipefail
+          curl --fail --show-error --retry 30 --retry-delay 10 --retry-all-errors \
+            --max-time 20 "${CONTAINER_HEALTH_URL}"

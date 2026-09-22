@@ -140,15 +140,70 @@ exports the fallback stacks for the two screens that render without a stylesheet
 | `npm run start` | Serve the production build |
 | `npm run lint` | ESLint |
 
-There is no `test` or `typecheck` script yet; run `npx tsc --noEmit` directly.
+There is no `test` or `typecheck` script yet; run `npx tsc --noEmit` directly
+(after a build or `npm run dev` has run at least once, so Next's generated
+`PageProps`/`LayoutProps` globals under `.next/types` exist - `npm run build`
+already type-checks on its own, which is what CI relies on).
+
+## Deploy (Scaleway test via GitHub Actions)
+
+You create Scaleway resources in the console. GitHub Actions does not
+provision them. Pushing to `develop` runs
+[`.github/workflows/deploy-test.yml`](.github/workflows/deploy-test.yml):
+lint/build (build type-checks), push a Docker image, update the Serverless
+Container, then `GET /api/health`.
+
+Pull requests and any other branch run
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) only.
+
+This app holds no data of its own, so unlike `Membra-Backend` there is no
+`DATABASE_URL`, no migration step, and no seed step - it's a stateless
+Next.js server that talks to the API over HTTPS with a forwarded session
+cookie.
+
+### GitHub Environment `test` secrets
+
+- `SCW_ACCESS_KEY` / `SCW_SECRET_KEY` - the **container/registry** key, not
+  Object Storage or a database credential. Can reuse the same container-scope
+  IAM key pair as `Membra-Backend`'s `test` Environment.
+- `SCW_DEFAULT_ORGANIZATION_ID`
+- `SCW_DEFAULT_PROJECT_ID`
+- `SCW_DEFAULT_REGION` (`nl-ams`)
+- `CONTAINER_REGISTRY_ENDPOINT` (e.g. `rg.nl-ams.scw.cloud/membra-test`) - the
+  same registry namespace as the backend can hold both `membra-backend` and
+  `membra-frontend` images.
+- `SCW_CONTAINER_ID` - a **separate** Serverless Container from the backend's.
+- `CONTAINER_HEALTH_URL` (e.g. `https://<host>/api/health`)
+
+Create the Environment under the repo **Settings → Environments → test**.
+
+### Scaleway console (test, region `nl-ams`)
+
+- Private Container Registry namespace (reuse the backend's, or create one).
+- Serverless Containers namespace and public container (port **8080**, HTTP
+  probe `/api/health`). A stateless SSR server needs less memory than the
+  backend's API + DB connection pool; start around 512 MB and adjust from
+  observed usage.
+
+Runtime env on the **container** (regular env vars are fine here - none of
+this app's config is a secret the way the backend's `DATABASE_URL` or SMTP
+password are):
+
+- `API_BASE_URL` - the deployed backend's public origin, including the `/api`
+  prefix (e.g. `https://<backend-host>/api`).
+- `API_TIMEOUT_MS` (optional, defaults to `10000`).
+- `AVATAR_IMAGE_HOST` (optional) - only needed if the avatar bucket's origin
+  differs from the built-in default.
+- `NODE_ENV=production` and `PORT` are already set by the Docker image /
+  injected by Scaleway.
 
 ## Not yet in place
 
 Worth knowing before you rely on any of it:
 
-- **No tests and no CI.** No runner is installed and nothing verifies a build
-  outside the author's machine.
-- **No `.env.example`**, though `.gitignore` reserves it. Use the table above.
+- **No tests.** No runner is installed. CI (see [Deploy](#deploy-scaleway-test-via-github-actions))
+  runs lint and a build (which type-checks) on every push and pull request,
+  but nothing exercises behaviour.
 - **Forgot-password is stubbed** in the UI - the link in `login-form.tsx` is
   commented out. The API supports it.
 - **Footer links point at `#`.** The routes don't exist yet.
