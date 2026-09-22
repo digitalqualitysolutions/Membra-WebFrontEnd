@@ -44,11 +44,84 @@ export async function clubFailure(
   if (error.status === 409) return t("clubConflict");
 
   /*
-   * The API turned a value down. Its message is the only thing that says which
-   * one, so it's passed on - in English, since the API writes it, but far more
-   * use than a "try again" that can't be acted on.
+   * The API turned a value down. `message` is usually just "Validation failed",
+   * so prefer `details`, which names the fields. English, since the API writes
+   * it, but far more use than a "try again" that can't be acted on.
    */
-  if (error.status === 400) return t("saveRejected", { reason: error.message });
+  if (error.status === 400) {
+    return t("saveRejected", { reason: validationReason(error) ?? error.message });
+  }
 
   return t("unexpected");
+}
+
+/** How much of a validation payload is worth putting in front of someone. */
+const REASON_LIMIT = 300;
+
+/** The field errors out of a 400's `details`, as one line. */
+function validationReason(error: ApiError): string | undefined {
+  if (!error.details) return undefined;
+
+  let payload: unknown;
+
+  try {
+    payload = JSON.parse(error.details);
+  } catch {
+    // Not JSON, so the API sent a plain sentence.
+    payload = error.details;
+  }
+
+  const parts = fieldMessages(payload);
+  if (parts.length === 0) return undefined;
+
+  const reason = parts.join("; ");
+
+  return reason.length > REASON_LIMIT
+    ? `${reason.slice(0, REASON_LIMIT)}…`
+    : reason;
+}
+
+/**
+ * Pulls `field: message` out of whichever shape the API's validator used.
+ * Covers a plain string, an issue array, and Zod's flattened object.
+ */
+function fieldMessages(details: unknown): string[] {
+  if (typeof details === "string") return details.trim() ? [details] : [];
+
+  if (Array.isArray(details)) {
+    return details.flatMap((issue) => {
+      if (typeof issue === "string") return [issue];
+      if (!issue || typeof issue !== "object") return [];
+
+      const row = issue as Record<string, unknown>;
+      const text = [row.message, row.msg].find((v) => typeof v === "string");
+
+      if (typeof text !== "string") return [];
+
+      const field = Array.isArray(row.path)
+        ? row.path.join(".")
+        : [row.param, row.field].find((v) => typeof v === "string");
+
+      return [typeof field === "string" && field ? `${field}: ${text}` : text];
+    });
+  }
+
+  if (details && typeof details === "object") {
+    const flat = details as Record<string, unknown>;
+
+    // Zod's flattened form keeps the per-field half under `fieldErrors`.
+    if (flat.fieldErrors && typeof flat.fieldErrors === "object") {
+      const fields = fieldMessages(flat.fieldErrors);
+
+      return fields.length > 0 ? fields : fieldMessages(flat.formErrors);
+    }
+
+    return Object.entries(flat).flatMap(([field, value]) =>
+      (Array.isArray(value) ? value : [value])
+        .filter((text): text is string => typeof text === "string")
+        .map((text) => `${field}: ${text}`),
+    );
+  }
+
+  return [];
 }

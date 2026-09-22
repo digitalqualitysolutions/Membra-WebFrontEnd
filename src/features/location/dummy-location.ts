@@ -60,7 +60,6 @@ function court(
   return {
     id: `${prefix.toLowerCase().replace(/\./g, "-")}-${number}`,
     name: `Bane ${number}`,
-    kind: "court",
     depth: COURT_DEPTH,
     short: String(number),
     show: `${prefix}.${number}`,
@@ -102,7 +101,6 @@ function zone(
   return {
     id,
     name,
-    kind: "zone",
     depth: 1,
     short,
     show,
@@ -130,7 +128,6 @@ function hub(
   return {
     id,
     name,
-    kind: "hub",
     depth: 0,
     short,
     show: short,

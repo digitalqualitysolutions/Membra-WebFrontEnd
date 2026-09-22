@@ -29,6 +29,9 @@ import { cn } from "@/lib/utils";
  */
 const NONE = "none";
 
+/** The API's cap on a location's short code. */
+const SHORT_MAX = 8;
+
 /** Matches the compact sizing the record cards type into. */
 const compact = "h-9 px-3 text-[13px]";
 const compactTrigger = "h-9 px-3 text-[13px] data-[size=default]:h-9";
@@ -112,9 +115,47 @@ export function AddLocationPanel({
    */
   const parents = locations.filter((location) => apiId(location.id) !== null);
 
+  // The two are exclusive, so setting one clears the other.
+  function pickSite(value: string) {
+    setSite(value);
+    if (value !== NONE) setParent(NONE);
+  }
+
+  function pickParent(value: string) {
+    setParent(value);
+    if (value !== NONE) setSite(NONE);
+  }
+
+  /**
+   * Short codes already taken where this one would sit.
+   *
+   * Siblings only. `HH.i.1` and `RP.1` are both fine - it's two `1`s under the
+   * same parent that would collide, since the API builds the dotted name from
+   * the parent chain plus this code.
+   */
+  const takenHere = new Set(
+    locations
+      .filter((location) => (location.parentLocation ?? NONE) === parent)
+      .map((location) => location.short.trim().toLowerCase()),
+  );
+
+  const duplicate =
+    short.trim().length > 0 && takenHere.has(short.trim().toLowerCase());
+
+  /**
+   * A dot would break the dotted name it goes into - `HH.i` as a code makes
+   * `HH.i.HH.i`, with no way to tell where one step ends. Spaces go too, since
+   * the code is read as one token.
+   */
+  const malformed = /[.\s]/.test(short.trim());
+
   /** The two things that can't be defaulted or derived, and a club to put them in. */
   const ready =
-    clubId !== null && name.trim().length > 0 && short.trim().length > 0;
+    clubId !== null &&
+    name.trim().length > 0 &&
+    short.trim().length > 0 &&
+    !duplicate &&
+    !malformed;
 
   function save() {
     if (clubId === null) return;
@@ -157,18 +198,10 @@ export function AddLocationPanel({
       const stored = result.location;
       if (!stored) return;
 
-      // A new location is always a leaf: nothing hangs off it yet. No parent
-      // makes it a hub; under one it's a court when members can book it and a
-      // zone when they can't. Its parent may have just stopped being a leaf,
-      // which the table works out for itself.
-      const kind = !above ? "hub" : bookable ? "court" : "zone";
-
       onCreate({
-        // The API's own id and dotted code, not a guess at either: `shownName`
-        // is composed upstream from the parent chain.
+        // The API's own id and dotted code - `shownName` is composed upstream.
         id: String(stored.id),
         name: stored.name,
-        kind,
         // One below whatever it was put under, however deep that already was.
         depth: above ? above.depth + 1 : 0,
         short: stored.short,
@@ -226,18 +259,25 @@ export function AddLocationPanel({
 
           <Field label={t("short")} className="w-24">
             <Input
-              className={compact}
+              className={cn(compact, (duplicate || malformed) && "border-danger")}
               value={short}
+              // The API's own cap, so 9 characters is stopped here rather than
+              // coming back as a flat "something went wrong".
+              maxLength={SHORT_MAX}
               onChange={(event) => setShort(event.target.value)}
               placeholder={t("shortPlaceholder")}
               aria-label={t("short")}
+              aria-invalid={duplicate || malformed}
             />
           </Field>
 
+          {/* A site makes it a root node; a parent location makes it a child
+              that inherits one. Picking either rules the other out. */}
           <Field label={t("parentSite")} className="w-64">
             <Choice
               value={site}
-              onChange={setSite}
+              onChange={pickSite}
+              disabled={parent !== NONE}
               label={t("parentSite")}
               none={t("none")}
               options={addresses.map((address) => ({
@@ -250,12 +290,12 @@ export function AddLocationPanel({
           <Field label={t("parentLocation")} className="w-48">
             <Choice
               value={parent}
-              onChange={setParent}
+              onChange={pickParent}
+              disabled={site !== NONE}
               label={t("parentLocation")}
               none={t("none")}
-              // Keyed by id, and labelled by the dotted code rather than the
-              // short one: `HH.i.1 (Bane 1)` says which hall's Bane 1 this is,
-              // where `1 (Bane 1)` would read the same for every hall.
+              // `HH.i.1 (Bane 1)` - the dotted code says which hall's Bane 1
+              // this is, where the short code alone reads the same for all.
               options={parents.map((location) => ({
                 value: location.id,
                 label: `${location.show} (${location.name})`,
@@ -333,6 +373,16 @@ export function AddLocationPanel({
         </div>
       </div>
 
+      {duplicate || malformed ? (
+        <div className="border-t border-line px-5 py-3 sm:px-6">
+          <p role="alert" className="text-[13px] text-danger">
+            {malformed
+              ? t("shortInvalid")
+              : t("shortTaken", { short: short.trim() })}
+          </p>
+        </div>
+      ) : null}
+
       {/* The row stays open and filled in behind this: whatever the API
           refused, retyping the other eight fields isn't the way to fix it. */}
       {failure ? (
@@ -383,16 +433,18 @@ function Choice({
   options,
   label,
   none,
+  disabled = false,
   onChange,
 }: {
   value: string;
   options: readonly { value: string; label: string }[];
   label: string;
   none: string;
+  disabled?: boolean;
   onChange: (value: string) => void;
 }) {
   return (
-    <Select value={value} onValueChange={onChange}>
+    <Select value={value} onValueChange={onChange} disabled={disabled}>
       <SelectTrigger className={cn("w-full", compactTrigger)} aria-label={label}>
         <SelectValue />
       </SelectTrigger>

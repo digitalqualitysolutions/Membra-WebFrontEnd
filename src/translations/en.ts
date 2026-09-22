@@ -384,7 +384,7 @@ export const en = {
       editing: "Contact edit mode active.",
     },
 
-    /** The halls, zones and courts the club books. */
+    /** The locations the club books. */
     locations: {
       title: "Locations (halls, courts)",
       editAll: "Edit locations",
@@ -409,15 +409,10 @@ export const en = {
         active: "Active",
         directions: "Directions",
       },
-
-      kinds: {
-        zone: "Zone",
-        court: "Court",
-      },
     },
   },
 
-  /** The whole estate at once: every hub, zone and court as one matrix. */
+  /** The whole estate at once, as one matrix. */
   location: {
     metaTitle: "Locations",
     title: "Locations overview",
@@ -425,12 +420,12 @@ export const en = {
       "Hierarchical court and facility matrix, active status, public visibility, quotas, and location groupings.",
 
     filter: "Filter by name, code, group…",
-    /** The pill that adds the table up. Green only while every hub is active. */
-    summaryAll: "All {hubs} hubs active ({courts} bookable courts)",
-    summarySome: "{active} of {hubs} hubs active ({courts} bookable courts)",
+    /** The pill that adds the table up. Green only while all are active. */
+    summaryAll: "All {total} locations active ({bookable} bookable)",
+    summarySome: "{active} of {total} locations active ({bookable} bookable)",
     expandAll: "Expand all",
     collapseAll: "Collapse all",
-    add: "Add court or hub",
+    add: "Add location",
     empty: "No locations match that filter.",
     /** Stands in for a column that doesn't apply to the row. */
     none: "–",
@@ -457,18 +452,12 @@ export const en = {
       active: "Active",
     },
 
-    kinds: {
-      hub: "Hub",
-      zone: "Zone",
-      court: "Court",
-    },
-
     surfaces: {
       indoor: "Indoor",
       outdoor: "Outdoor",
     },
 
-    /** The panel a hub, zone or court is created from. */
+    /** The panel a location is created from. */
     form: {
       title: "Add location",
       description:
@@ -479,6 +468,10 @@ export const en = {
       namePlaceholder: "Location name",
       short: "Short",
       shortPlaceholder: "In short",
+      /** Two locations under the same parent can't share a short code. */
+      shortTaken: "“{short}” is already used in this location. Pick another.",
+      /** A dot is the separator in the shown name, so it can't sit inside one. */
+      shortInvalid: "A short code can't contain a dot or a space.",
       parentSite: "Parent site",
       parentLocation: "Parent location",
       memberBookable: "Mbr bookable",

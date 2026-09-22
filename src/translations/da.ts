@@ -359,15 +359,10 @@ export const da: Dictionary = {
         active: "Aktiv",
         directions: "Vejvisning",
       },
-
-      kinds: {
-        zone: "Zone",
-        court: "Bane",
-      },
     },
   },
 
-  /** Hele anlægget på én gang: alle hubs, zoner og baner som én matrix. */
+  /** Hele anlægget på én gang som én matrix. */
   location: {
     metaTitle: "Lokationer",
     title: "Oversigt over lokationer",
@@ -375,11 +370,11 @@ export const da: Dictionary = {
       "Hierarkisk matrix over baner og faciliteter, aktiv status, offentlig synlighed, kvoter og lokationsgrupper.",
 
     filter: "Filtrér efter navn, kode, gruppe…",
-    summaryAll: "Alle {hubs} hubs er aktive ({courts} bookbare baner)",
-    summarySome: "{active} af {hubs} hubs er aktive ({courts} bookbare baner)",
+    summaryAll: "Alle {total} lokationer er aktive ({bookable} bookbare)",
+    summarySome: "{active} af {total} lokationer er aktive ({bookable} bookbare)",
     expandAll: "Udvid alle",
     collapseAll: "Fold alle sammen",
-    add: "Tilføj bane eller hub",
+    add: "Tilføj lokation",
     empty: "Ingen lokationer matcher det filter.",
     none: "–",
     moreGroups: "+{count}",
@@ -402,12 +397,6 @@ export const da: Dictionary = {
       active: "Aktiv",
     },
 
-    kinds: {
-      hub: "Hub",
-      zone: "Zone",
-      court: "Bane",
-    },
-
     surfaces: {
       indoor: "Inde",
       outdoor: "Ude",
@@ -423,6 +412,8 @@ export const da: Dictionary = {
       namePlaceholder: "Lokationens navn",
       short: "Kort",
       shortPlaceholder: "Forkortelse",
+      shortTaken: "“{short}” er allerede brugt her. Vælg en anden.",
+      shortInvalid: "En forkortelse må ikke indeholde punktum eller mellemrum.",
       parentSite: "Overordnet sted",
       parentLocation: "Overordnet lokation",
       memberBookable: "Medl. kan booke",

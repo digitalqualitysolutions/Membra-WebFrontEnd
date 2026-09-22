@@ -25,7 +25,6 @@ function court(
   return {
     id,
     name,
-    kind: "court",
     depth: 2,
     short,
     show,
@@ -51,7 +50,6 @@ function zone(
   return {
     id,
     name,
-    kind: "zone",
     depth: 1,
     short,
     show,
@@ -79,7 +77,6 @@ export const dummyLocations: ClubLocation[] = [
   {
     id: "hh",
     name: "Hafnia",
-    kind: "hub",
     depth: 0,
     short: "HH",
     show: "HH",
@@ -107,7 +104,6 @@ export const dummyLocations: ClubLocation[] = [
   {
     id: "rp",
     name: "Ryparken",
-    kind: "hub",
     depth: 0,
     short: "RP",
     show: "RP",

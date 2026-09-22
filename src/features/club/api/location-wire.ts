@@ -95,24 +95,12 @@ export const locationsListResponseSchema = z.object({
 /* ------------------------------------------------------------------------ */
 
 /**
- * The API's flat list, as the tree both locations tables render.
+ * The API's flat list, as the tree both locations tables render. Walks
+ * depth-first from the roots, since nothing promises parent-first order and
+ * the guides are drawn by reading straight down the rows.
  *
- * Three things have to be worked out here, because the API sends none of them:
- *
- * - **Order.** Nothing promises the list arrives parent-first, and both tables
- *   draw their guides by reading down the rows in order. So this walks the
- *   tree depth-first from the roots rather than trusting the order given.
- * - **Depth.** How far down the chain a row sits, which is what the indents
- *   and guides are drawn from. Unbounded: any location can be given children,
- *   so a club can nest as deep as it likes.
- * - **Kind.** A root is a hub. Anything with locations under it is a zone -
- *   that holds however deep it sits, so a court given children reads as a zone
- *   from then on. A leaf is a court when members can book it and a zone when
- *   they can't.
- *
- * @param addressShort how a `clubAddressId` reads in the table: the club's own
- *   short code for it. Passed in because the addresses come from the club
- *   record, which this module doesn't fetch.
+ * @param addressShort the club's short code for a `clubAddressId` - passed in
+ *   because the addresses come from the club record, not from here.
  */
 export function toClubLocations(
   rows: readonly LocationResponse[],
@@ -132,21 +120,9 @@ export function toClubLocations(
   const seen = new Set<number>();
 
   function one(row: LocationResponse, depth: number): ClubLocation {
-    const hasChildren = (children.get(row.id)?.length ?? 0) > 0;
-
     return {
       id: String(row.id),
       name: row.name,
-      kind:
-        depth === 0
-          ? "hub"
-          : // Whatever it was, something hangs off it now, so it groups rather
-            // than gets booked - a court with courts under it isn't a court.
-            hasChildren
-            ? "zone"
-            : row.canMemberBook
-              ? "court"
-              : "zone",
       depth,
       short: row.shortName,
       // The API composes this from the parent chain, so it's read, not built.

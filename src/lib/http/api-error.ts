@@ -10,7 +10,10 @@ export class ApiError extends Error {
   /** HTTP status, or `0` if the request never left this process. */
   readonly status: number;
   readonly code: string;
-  /** Server-side detail. Fine in logs, never shown to a user. */
+  /**
+   * Server-side detail, JSON-encoded when the API sent an object. For logs -
+   * the one exception is a 400, where it names the fields that were refused.
+   */
   readonly details?: string;
 
   constructor(status: number, code: string, message: string, details?: string) {

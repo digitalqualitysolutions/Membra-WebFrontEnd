@@ -270,7 +270,7 @@ export function ClubLocationsCard({
                     key={location.id}
                     className={cn(
                       "border-b border-line last:border-0",
-                      location.kind !== "hub" && "bg-page/40",
+                      location.depth > 0 && "bg-page/40",
                     )}
                   >
                     <Td>
@@ -320,13 +320,6 @@ export function ClubLocationsCard({
                           {location.name}
                         </span>
 
-                        {location.kind === "hub" ? null : (
-                          <Chip
-                            tone={location.kind === "court" ? "success" : "neutral"}
-                          >
-                            {t(`kinds.${location.kind}`)}
-                          </Chip>
-                        )}
                       </div>
                     </Td>
 

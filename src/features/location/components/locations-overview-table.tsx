@@ -59,9 +59,6 @@ function withCreated(
   while (at < rows.length && (rows[at]?.depth ?? 0) > parent.depth) at += 1;
 
   const next = [...rows];
-
-  if (parent.kind === "court") next[parentAt] = { ...parent, kind: "zone" };
-
   next.splice(at, 0, created);
 
   return next;
@@ -139,11 +136,9 @@ export function LocationsOverviewTable({
   }, [locations]);
 
   /** What the summary pill counts. The whole estate, not the filtered view. */
-  const hubs = locations.filter((location) => location.kind === "hub");
-  const activeHubs = hubs.filter((location) => location.active);
-  const bookable = locations.filter(
-    (location) => location.kind === "court" && location.memberBooking,
-  );
+  const active = locations.filter((location) => location.active);
+  const bookable = locations.filter((location) => location.memberBooking);
+  const allActive = active.length === locations.length;
 
   const needle = query.trim().toLowerCase();
 
@@ -257,11 +252,11 @@ export function LocationsOverviewTable({
           </div>
 
           {/* What the table adds up to, so the count doesn't have to be read
-              off the rows. Green only while every hub is actually active. */}
+              off the rows. Green only while everything is active. */}
           <p
             className={cn(
               "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[12px] font-medium",
-              activeHubs.length === hubs.length
+              allActive
                 ? "border-success/30 bg-success/10 text-success"
                 : "border-lock/40 bg-lock/10 text-lock",
             )}
@@ -270,19 +265,19 @@ export function LocationsOverviewTable({
               aria-hidden
               className={cn(
                 "size-2 rounded-full",
-                activeHubs.length === hubs.length ? "bg-success" : "bg-lock",
+                allActive ? "bg-success" : "bg-lock",
               )}
             />
 
-            {activeHubs.length === hubs.length
+            {allActive
               ? t("summaryAll", {
-                  hubs: hubs.length,
-                  courts: bookable.length,
+                  total: locations.length,
+                  bookable: bookable.length,
                 })
               : t("summarySome", {
-                  active: activeHubs.length,
-                  hubs: hubs.length,
-                  courts: bookable.length,
+                  active: active.length,
+                  total: locations.length,
+                  bookable: bookable.length,
                 })}
           </p>
         </div>
@@ -427,7 +422,7 @@ export function LocationsOverviewTable({
                         <span
                           className={cn(
                             "truncate text-[13px] text-ink",
-                            location.kind === "hub"
+                            location.depth === 0
                               ? "font-semibold"
                               : "font-medium",
                           )}
@@ -435,14 +430,9 @@ export function LocationsOverviewTable({
                           {location.name}
                         </span>
 
-                        {/* A zone says which side of the wall it is, since that
-                            is the thing about it a court doesn't inherit by
-                            name. Hubs and courts just say what they are. */}
                         {location.surface ? (
                           <Tag uppercase>{t(`surfaces.${location.surface}`)}</Tag>
-                        ) : (
-                          <Tag>{t(`kinds.${location.kind}`)}</Tag>
-                        )}
+                        ) : null}
                       </div>
                     </Td>
 
@@ -450,7 +440,7 @@ export function LocationsOverviewTable({
                       <span
                         className={cn(
                           "font-mono text-[12px] text-body",
-                          location.kind === "hub" && "font-semibold text-ink",
+                          location.depth === 0 && "font-semibold text-ink",
                         )}
                       >
                         {location.short}
