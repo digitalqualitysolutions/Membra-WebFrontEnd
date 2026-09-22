@@ -97,6 +97,10 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Self-contained server.js + traced node_modules, so the Docker runtime
+  // image doesn't need a full `npm ci` on top of the build output.
+  output: "standalone",
+
   // Next advertises itself in `X-Powered-By` by default. Naming the framework
   // isn't an exploit on its own, but it hands a scanner its first filter for
   // free and no visitor needs to know.

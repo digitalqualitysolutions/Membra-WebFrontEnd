@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches-ignore:
+      - develop
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      API_BASE_URL: https://build-placeholder.invalid/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      # `next build` type-checks by default (no `ignoreBuildErrors` set), so
+      # this doubles as the type check. A standalone `tsc --noEmit` here would
+      # fail on a clean checkout: Next only generates the `PageProps` /
+      # `LayoutProps` globals it type-checks against under `.next/types` after
+      # a build or dev run.
+      - run: npm run build
