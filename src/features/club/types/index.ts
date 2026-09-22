@@ -85,7 +85,14 @@ export type ClubContact = {
 
 export type ClubContactField = keyof ClubContact;
 
-/** Where a location sits in the hierarchy: a hub, a zone in it, or a court. */
+/**
+ * Where a location sits in the hierarchy: a hub, a zone in it, or a court.
+ *
+ * Read off the tree rather than stored: the top of a chain is a hub, anything
+ * with locations under it is a zone, and a leaf members can book is a court.
+ * Nesting is unbounded - a court can be given children, and becomes a zone the
+ * moment it has them.
+ */
 export type LocationKind = "hub" | "zone" | "court";
 
 /**
@@ -99,14 +106,21 @@ export type ClubLocation = {
   id: string;
   name: string;
   kind: LocationKind;
-  /** Hubs 0, zones 1, courts 2. What the guides are drawn from. */
+  /** How far down the chain it sits, counting hubs as 0. Unbounded. */
   depth: number;
   short: string;
-  /** The dotted code the club reads it by: `HH.i.1`. */
+  /** The dotted code the club reads it by: `HH.i.1`. Unique across the club. */
   show: string;
   /** The address it books against, by the address's own short code. */
   parentAddress: string | null;
-  /** The location above it, by that location's short code. */
+  /**
+   * The location above it, by that location's **id** - not its short code.
+   *
+   * Short codes repeat: every hall has a `Bane 1`, and since any location can
+   * be a parent, two of them can be candidates at once. Keyed by short, the
+   * tables matched the first row with that code and drew courts under the
+   * wrong hall.
+   */
   parentLocation: string | null;
   memberBooking: boolean;
   teamMemberBooking: boolean;

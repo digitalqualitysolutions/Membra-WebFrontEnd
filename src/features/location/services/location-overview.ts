@@ -1,21 +1,28 @@
-import { dummyLocations } from "@/features/location/dummy-location";
+import { clubLocations } from "@/features/club/services/club-details";
 import type { LocationRow } from "@/features/location/types";
-import { isEmptyViewMode } from "@/features/testing/server/empty-view-mode";
 
 /**
  * What the locations overview reads.
  *
- * The values are still made up, but they don't live here: they're all in
- * `dummy-location.ts`, so switching this screen onto the real API is deleting
- * one file and replacing the return below with an `api(...)` call plus a
- * `location-wire.ts`. The page awaits this function already and won't notice.
+ * The same rows the club card shows, widened by the three columns only this
+ * screen has. Read through `clubLocations` rather than calling the endpoint
+ * again: one screen's locations and the other's are the same locations, and
+ * two readers with their own idea of how to build the tree is how the two
+ * tables would start disagreeing about which court sits under which hall.
  *
- * Async for the same reason - the shape of the read is the part worth being
- * honest about now, even while the answer is a constant.
+ * Site, surface and group membership have nowhere to come from yet - the API's
+ * location carries none of them. They're left empty rather than invented, so
+ * the columns read as "not set" instead of as something the club never said.
+ * `dummy-location.ts` still holds worked examples of all three for whenever
+ * those land.
  */
 export async function locationOverview(): Promise<LocationRow[]> {
-  // TEMPORARY testing switch - see `features/testing`. Delete with it.
-  if (await isEmptyViewMode()) return [];
+  const locations = await clubLocations();
 
-  return dummyLocations;
+  return locations.map((location) => ({
+    ...location,
+    site: null,
+    surface: null,
+    groups: [],
+  }));
 }

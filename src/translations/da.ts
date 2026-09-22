@@ -510,17 +510,6 @@ export const da: Dictionary = {
       revoke: "Log ud",
       unavailable: "Dine sessioner kunne ikke indlæses. Prøv igen om lidt.",
     },
-
-    emptyView: {
-      title: "Test",
-      intro: "Værktøjer til at se skærme, der er svære at nå med rigtige data.",
-      label: "Testtilstand for tomme visninger",
-      description:
-        "Får lokationslisterne til at svare, som om de var tomme, så deres skærme for første opsætning og ingen resultater kan tjekkes. Din klub er rigtige data og påvirkes ikke. Intet slettes - slå det fra, og alt er der stadig.",
-      active:
-        "Tom visning er slået til. Skærme i hele appen vil se tomme ud, indtil du slår det fra, og intet du gemmer bliver bevaret.",
-      blocked: "Testtilstand er slået til - intet blev gemt.",
-    },
   },
 
   errors: {

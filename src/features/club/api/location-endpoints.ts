@@ -1,0 +1,82 @@
+import "server-only";
+
+import { cache } from "react";
+
+import { SESSION_COOKIE } from "@/features/auth/server/session-cookie";
+import { segment } from "@/features/club/api/club-endpoints";
+import {
+  createLocationRequestSchema,
+  locationResponseSchema,
+  locationsListResponseSchema,
+  type CreateLocationRequest,
+  type LocationResponse,
+} from "@/features/club/api/location-wire";
+import { api, requestBody } from "@/lib/http/api";
+
+/**
+ * The location calls.
+ *
+ * Listing and creating. `GET /{locationId}` and `PATCH /{locationId}` exist
+ * upstream and aren't wired - nothing reads or edits a single row on its own.
+ *
+ * Like every club call, these need a session - the API answers 401 without -
+ * so the token goes along by hand.
+ */
+
+const withSession = (sessionToken: string) => ({
+  cookie: `${SESSION_COOKIE}=${sessionToken}`,
+});
+
+/**
+ * Every location the club has, flat and in no promised order.
+ *
+ * `cache` dedupes it for one request: the location page asks for the club and
+ * its locations at once, and `api` sends every call `no-store`, so without the
+ * wrapper one render could ask twice for the same answer.
+ *
+ * @throws {ApiError} 403 without admin rights on the club, 404 for no such club.
+ */
+export const listLocations = cache(async function listLocations(
+  clubId: number,
+  sessionToken: string,
+): Promise<LocationResponse[]> {
+  const { data } = await api(
+    locationsListResponseSchema,
+    `/clubs/${segment(clubId)}/locations`,
+    { headers: withSession(sessionToken) },
+  );
+
+  return data.locations;
+});
+
+/**
+ * Add a location to a club: a hall, a zone inside one, or a court.
+ *
+ * The API composes `shownName` itself, from the parent's `shownName` and this
+ * one's `shortName` (or the short name alone at the top of the tree), so the
+ * answer is worth reading rather than assuming - it's the only place the
+ * dotted code comes from.
+ *
+ * Admin only, and not retried on a timeout: a create that got through but
+ * answered late would leave the club with the location twice.
+ *
+ * @throws {ApiError} 400 for a value the API refuses - an unknown
+ *   `parentLocationId` or `clubAddressId`, or a short name already taken under
+ *   the same parent - 403 without admin rights on the club, 404 for no such
+ *   club.
+ */
+export async function createLocation(
+  clubId: number,
+  body: CreateLocationRequest,
+  sessionToken: string,
+): Promise<LocationResponse> {
+  const path = `/clubs/${segment(clubId)}/locations`;
+
+  const { data } = await api(locationResponseSchema, path, {
+    method: "POST",
+    body: requestBody(createLocationRequestSchema, path, body),
+    headers: withSession(sessionToken),
+  });
+
+  return data;
+}

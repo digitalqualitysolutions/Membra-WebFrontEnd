@@ -50,8 +50,12 @@ const withSession = (sessionToken: string) => ({
  * steering an authenticated call - session cookie attached - at whatever
  * endpoint the caller named. The actions check their ids before calling; this
  * is the second lock, next to the door it actually protects.
+ *
+ * Exported so `location-endpoints.ts` builds its paths the same way. One copy
+ * on purpose: a security check that exists twice is one that can be fixed in
+ * one place and stay broken in the other.
  */
-const segment = (id: number) => encodeURIComponent(String(id));
+export const segment = (id: number) => encodeURIComponent(String(id));
 
 /**
  * The activities a club can be registered for.

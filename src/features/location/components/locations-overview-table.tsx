@@ -15,10 +15,57 @@ import type { LocationRow } from "@/features/location/types";
 import { cn } from "@/lib/utils";
 
 /**
- * Indent per level, as a literal map rather than a computed class - Tailwind
- * scans source text and can't see a class it has to run the code to find out.
+ * Indent per level, in pixels, applied as a style rather than a class.
+ *
+ * Nesting is unbounded - any location can be given children - so there's no
+ * fixed list of classes to pick from, and Tailwind can't see a class it would
+ * have to run the code to find out. Capped so a deep branch still leaves the
+ * name column readable.
  */
-const indents = ["", "pl-4", "pl-8"] as const;
+const INDENT_STEP = 16;
+const INDENT_MAX = 96;
+
+const indentFor = (depth: number) =>
+  Math.min(depth * INDENT_STEP, INDENT_MAX);
+
+/**
+ * A just-created location, put where it belongs rather than at the end.
+ *
+ * The table draws its tree by reading straight down the rows, so a child
+ * appended to the bottom of the list renders as a stray indented line under
+ * some unrelated hall until the next full load. This walks past everything
+ * already under the parent and slots the new row in after its last sibling.
+ *
+ * The parent is re-read at the same time: a court that has just been given a
+ * child isn't a court any more, which is the rule the server applies when the
+ * page next loads and the one the screen should agree with now.
+ */
+function withCreated(
+  rows: readonly LocationRow[],
+  created: LocationRow,
+): LocationRow[] {
+  const parentAt = rows.findIndex((row) => row.id === created.parentLocation);
+
+  // A new hub, or a parent that somehow isn't on screen: the end is right.
+  if (created.parentLocation === null || parentAt === -1) {
+    return [...rows, created];
+  }
+
+  const parent = rows[parentAt];
+  if (!parent) return [...rows, created];
+
+  let at = parentAt + 1;
+
+  while (at < rows.length && (rows[at]?.depth ?? 0) > parent.depth) at += 1;
+
+  const next = [...rows];
+
+  if (parent.kind === "court") next[parentAt] = { ...parent, kind: "zone" };
+
+  next.splice(at, 0, created);
+
+  return next;
+}
 
 /** How many group codes a row shows before the rest collapse into a count. */
 const GROUPS_SHOWN = 3;
@@ -37,14 +84,14 @@ const GROUPS_SHOWN = 3;
  */
 export function LocationsOverviewTable({
   locations: saved,
+  clubId,
   addresses,
-  testMode = false,
 }: {
   locations: readonly LocationRow[];
+  /** The club a new location is created under. `null` when the member runs none. */
+  clubId: number | null;
   /** The club's own addresses, which are what a new hub is parented to. */
   addresses: readonly ClubAddress[];
-  /** TEMPORARY: empty view testing mode, which stops Save keeping anything. */
-  testMode?: boolean;
 }) {
   const t = useTranslations("location");
 
@@ -59,22 +106,20 @@ export function LocationsOverviewTable({
 
   const [query, setQuery] = useState("");
 
-  /** Branches folded away, by the short code of the node that heads them. */
+  /** Branches folded away, by the id of the node that heads them. */
   const [folded, setFolded] = useState<readonly string[]>([]);
 
   /**
-   * The nodes that can head a branch, by short code.
+   * Every row by id, for walking up a parent chain.
    *
-   * Courts are left out on purpose: their codes repeat - every hall has a Bane
-   * 1 - and nothing is ever parented to one, so including them would only let
-   * a duplicate overwrite a real parent.
+   * By id rather than short code, and with nothing left out: any location can
+   * head a branch, and short codes repeat - every hall has a `Bane 1` - so a
+   * map keyed by code would answer with whichever one it saw last.
    */
-  const parentsByShort = useMemo(() => {
+  const byId = useMemo(() => {
     const map = new Map<string, LocationRow>();
 
-    for (const location of locations) {
-      if (location.kind !== "court") map.set(location.short, location);
-    }
+    for (const location of locations) map.set(location.id, location);
 
     return map;
   }, [locations]);
@@ -108,7 +153,7 @@ export function LocationsOverviewTable({
 
     while (parent) {
       if (folded.includes(parent)) return true;
-      parent = parentsByShort.get(parent)?.parentLocation ?? null;
+      parent = byId.get(parent)?.parentLocation ?? null;
     }
 
     return false;
@@ -127,9 +172,9 @@ export function LocationsOverviewTable({
   /** Every node that heads a branch, which is what "expand all" has to clear. */
   const foldable = locations
     .filter((location) =>
-      locations.some((row) => row.parentLocation === location.short),
+      locations.some((row) => row.parentLocation === location.id),
     )
-    .map((location) => location.short);
+    .map((location) => location.id);
 
   const allOpen = folded.length === 0;
 
@@ -165,13 +210,13 @@ export function LocationsOverviewTable({
     return (
       <div className="flex flex-col gap-4">
         <AddLocationPanel
+          clubId={clubId}
           addresses={addresses}
           locations={locations}
           onCreate={(location) =>
-            setLocations((current) => [...current, location])
+            setLocations((current) => withCreated(current, location))
           }
           onClose={() => setAdding(false)}
-          testMode={testMode}
         />
 
         <LocationHelp />
@@ -276,13 +321,13 @@ export function LocationsOverviewTable({
           you just clicked rather than above the toolbar you were reading. */}
       {adding ? (
         <AddLocationPanel
+          clubId={clubId}
           addresses={addresses}
           locations={locations}
           onCreate={(location) =>
-            setLocations((current) => [...current, location])
+            setLocations((current) => withCreated(current, location))
           }
           onClose={() => setAdding(false)}
-          testMode={testMode}
         />
       ) : null}
 
@@ -319,9 +364,9 @@ export function LocationsOverviewTable({
 
               {visible.map((location) => {
                 const heads = locations.some(
-                  (row) => row.parentLocation === location.short,
+                  (row) => row.parentLocation === location.id,
                 );
-                const shut = folded.includes(location.short);
+                const shut = folded.includes(location.id);
 
                 return (
                   <tr
@@ -334,10 +379,8 @@ export function LocationsOverviewTable({
                           `pl-8` merged onto that would replace the gutter
                           instead of adding to it. */}
                       <div
-                        className={cn(
-                          "flex min-w-0 items-center gap-2",
-                          indents[location.depth] ?? "",
-                        )}
+                        className="flex min-w-0 items-center gap-2"
+                        style={{ paddingLeft: indentFor(location.depth) }}
                       >
                         {/* A node with something under it folds; a court has
                             nothing to fold, so it keeps the guide that says
@@ -353,11 +396,9 @@ export function LocationsOverviewTable({
                             }
                             onClick={() =>
                               setFolded((current) =>
-                                current.includes(location.short)
-                                  ? current.filter(
-                                      (short) => short !== location.short,
-                                    )
-                                  : [...current, location.short],
+                                current.includes(location.id)
+                                  ? current.filter((id) => id !== location.id)
+                                  : [...current, location.id],
                               )
                             }
                             className="inline-flex size-4 shrink-0 items-center justify-center rounded text-ink-muted transition-colors outline-none hover:text-ink focus-visible:ring-2 focus-visible:ring-ring/40"

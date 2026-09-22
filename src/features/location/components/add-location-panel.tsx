@@ -1,7 +1,7 @@
 "use client";
 
-import { useTranslations } from "next-intl";
-import { useRef, useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
+import { useState, useTransition } from "react";
 import type { ReactNode } from "react";
 
 import { Icon } from "@/components/icons";
@@ -15,9 +15,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { createLocationAction } from "@/features/club/services/create-location";
 import type { ClubAddress } from "@/features/club/types";
 import type { LocationRow } from "@/features/location/types";
-import { TestModeNotice } from "@/features/testing/components/test-mode-notice";
 import { cn } from "@/lib/utils";
 
 /**
@@ -34,6 +34,19 @@ const compact = "h-9 px-3 text-[13px]";
 const compactTrigger = "h-9 px-3 text-[13px] data-[size=default]:h-9";
 
 /**
+ * A row's id as the API knows it, or `null` for one that only exists on screen.
+ *
+ * Every row comes from the API now, so in practice this always answers. It
+ * stays because a parent travels to the API as an id: if a row ever arrives
+ * without a real one, refusing to offer it as a parent is the safe way to be
+ * wrong - sending a made-up id would be refused, and quietly sending `null`
+ * instead would create a hub where a court was meant.
+ */
+function apiId(id: string): number | null {
+  return /^\d+$/.test(id) ? Number(id) : null;
+}
+
+/**
  * The row a new hub, zone or court is created from.
  *
  * One line, scrolling sideways the way the table below it does, rather than a
@@ -45,29 +58,34 @@ const compactTrigger = "h-9 px-3 text-[13px] data-[size=default]:h-9";
  * the ordinary case - a court the club has just built and wants its own members
  * booking, before deciding whether the public timetable should carry it.
  *
- * PLACEHOLDER, like the rest of the screen: `onCreate` hands the row upwards
- * and the table shows it. Nothing is posted anywhere yet.
+ * Save posts to `POST /clubs/{clubId}/locations` and hands the stored row
+ * upwards, so the table shows what the API kept rather than what was typed -
+ * `show` in particular is the API's to compose, not ours to predict.
  */
 export function AddLocationPanel({
+  clubId,
   addresses,
   locations,
   onCreate,
   onClose,
-  testMode = false,
 }: {
+  /** The club being added to. `null` when the member runs none, which
+      disables Save: there is nothing to create a location under. */
+  clubId: number | null;
   /** The club's own addresses, which are what a hub is parented to. */
   addresses: readonly ClubAddress[];
   /** Everything already in the table, which is what a child is parented to. */
   locations: readonly LocationRow[];
   onCreate: (location: LocationRow) => void;
   onClose: () => void;
-  /** TEMPORARY: empty view testing mode is on, so Save keeps nothing. */
-  testMode?: boolean;
 }) {
   const t = useTranslations("location.form");
+  const locale = useLocale();
 
-  /** Set when Save was pressed in testing mode and refused. */
-  const [blocked, setBlocked] = useState(false);
+  /** Why the API turned the location down, already in the member's language. */
+  const [failure, setFailure] = useState<string | null>(null);
+
+  const [saving, startSaving] = useTransition();
 
   const [name, setName] = useState("");
   const [short, setShort] = useState("");
@@ -79,63 +97,99 @@ export function AddLocationPanel({
   const [active, setActive] = useState(true);
 
   /**
-   * Ids for rows that only exist on screen.
+   * What a child can hang off: any location at all, at any depth.
    *
-   * A counter rather than a clock: `Date.now()` read from a component body is
-   * impure, and two locations added inside the same millisecond would collide
-   * on a key anyway. Nothing outside this session ever sees these.
-   */
-  const created = useRef(0);
-
-  /**
-   * What a child can hang off: hubs and zones, never a court.
+   * Courts included - a court is only a leaf until something is put under it,
+   * and a club that splits `Bane 1` into halves needs exactly that. It stops
+   * reading as a court and starts reading as a zone once it has children.
    *
-   * Court codes repeat - every hall has a Bane 1 - so offering them would let
-   * you point at a parent the table can't tell apart from three others.
+   * Offering them is only safe because the options below are keyed by id.
+   * Court codes repeat - every hall has a `Bane 1` - so a list keyed by short
+   * code would resolve the wrong one without saying so.
+   *
+   * Rows the API doesn't know about are left out: a parent is sent as its id,
+   * so one without a real id can't be named as a parent at all.
    */
-  const parents = locations.filter((location) => location.kind !== "court");
+  const parents = locations.filter((location) => apiId(location.id) !== null);
 
-  /** The two things that can't be defaulted or derived. */
-  const ready = name.trim().length > 0 && short.trim().length > 0;
+  /** The two things that can't be defaulted or derived, and a club to put them in. */
+  const ready =
+    clubId !== null && name.trim().length > 0 && short.trim().length > 0;
 
   function save() {
-    // TEMPORARY testing switch - see `features/testing`. The row stays open
-    // and filled in, so the screen can go on being tested; nothing leaves it.
-    if (testMode) {
-      setBlocked(true);
-      return;
-    }
+    if (clubId === null) return;
 
-    const above = parents.find((location) => location.short === parent);
+    const above = parents.find((location) => location.id === parent);
+    const chosenSite = addresses.find((address) => address.short === site);
 
-    // No parent means this is a hub. Below one, a location that members book
-    // is a court and a location they don't is a zone that only groups things -
-    // which is the distinction the two already in the table are drawn on.
-    const kind = !above ? "hub" : bookable ? "court" : "zone";
+    setFailure(null);
 
-    onCreate({
-      id: `new-${(created.current += 1)}`,
-      name: name.trim(),
-      kind,
-      depth: kind === "hub" ? 0 : kind === "zone" ? 1 : 2,
-      short: short.trim(),
-      show: above ? `${above.show}.${short.trim()}` : short.trim(),
-      parentAddress: site === NONE ? null : site,
-      parentLocation: above?.short ?? null,
-      memberBooking: bookable,
-      teamMemberBooking: false,
-      memberBookingCount: bookable && quota ? Number(quota) : null,
-      publicListed: listed,
-      friends: false,
-      active,
-      directions: null,
-      site: null,
-      surface: null,
-      // Groups are owned by their own screen; a new location joins none.
-      groups: [],
+    startSaving(async () => {
+      const result = await createLocationAction({
+        locale,
+        clubId,
+        values: {
+          name,
+          shortName: short,
+          parentLocationId: above ? apiId(above.id) : null,
+          // The club's addresses come from the API, so this id is already real.
+          clubAddressId: chosenSite ? Number(chosenSite.id) : null,
+          directions: "",
+          canMemberBook: bookable,
+          // Neither has a control in this row yet, and the table shows both as
+          // off for a location nobody has opened up. Sent rather than left out
+          // so what is stored matches what the row said.
+          canTeamBook: false,
+          memberReqToBook: bookable && quota ? Number(quota) : null,
+          public: listed,
+          canFriendshipClubBook: false,
+          active,
+        },
+      });
+
+      if (result.formError !== undefined) {
+        setFailure(result.formError);
+        return;
+      }
+
+      // Nothing stored and nothing refused can't happen, but the type allows
+      // it; leaving the row open is the harmless way to be wrong.
+      const stored = result.location;
+      if (!stored) return;
+
+      // A new location is always a leaf: nothing hangs off it yet. No parent
+      // makes it a hub; under one it's a court when members can book it and a
+      // zone when they can't. Its parent may have just stopped being a leaf,
+      // which the table works out for itself.
+      const kind = !above ? "hub" : bookable ? "court" : "zone";
+
+      onCreate({
+        // The API's own id and dotted code, not a guess at either: `shownName`
+        // is composed upstream from the parent chain.
+        id: String(stored.id),
+        name: stored.name,
+        kind,
+        // One below whatever it was put under, however deep that already was.
+        depth: above ? above.depth + 1 : 0,
+        short: stored.short,
+        show: stored.show,
+        parentAddress: site === NONE ? null : site,
+        parentLocation: above?.id ?? null,
+        memberBooking: bookable,
+        teamMemberBooking: false,
+        memberBookingCount: bookable && quota ? Number(quota) : null,
+        publicListed: listed,
+        friends: false,
+        active,
+        directions: null,
+        site: null,
+        surface: null,
+        // Groups are owned by their own screen; a new location joins none.
+        groups: [],
+      });
+
+      onClose();
     });
-
-    onClose();
   }
 
   return (
@@ -199,9 +253,12 @@ export function AddLocationPanel({
               onChange={setParent}
               label={t("parentLocation")}
               none={t("none")}
+              // Keyed by id, and labelled by the dotted code rather than the
+              // short one: `HH.i.1 (Bane 1)` says which hall's Bane 1 this is,
+              // where `1 (Bane 1)` would read the same for every hall.
               options={parents.map((location) => ({
-                value: location.short,
-                label: `${location.short} (${location.name})`,
+                value: location.id,
+                label: `${location.show} (${location.name})`,
               }))}
             />
           </Field>
@@ -224,7 +281,11 @@ export function AddLocationPanel({
             <Input
               className={compact}
               type="number"
+              // The API's own range. Without the cap, a 40 here comes back as
+              // a flat "something went wrong" from the schema rather than as
+              // the number being out of range.
               min={1}
+              max={30}
               value={quota}
               disabled={!bookable}
               onChange={(event) => setQuota(event.target.value)}
@@ -264,7 +325,7 @@ export function AddLocationPanel({
           </Field>
 
           <Control>
-            <Button type="button" disabled={!ready} onClick={save}>
+            <Button type="button" disabled={!ready || saving} onClick={save}>
               <Icon name="save" size="xs" />
               {t("save")}
             </Button>
@@ -272,9 +333,13 @@ export function AddLocationPanel({
         </div>
       </div>
 
-      {blocked ? (
+      {/* The row stays open and filled in behind this: whatever the API
+          refused, retyping the other eight fields isn't the way to fix it. */}
+      {failure ? (
         <div className="border-t border-line px-5 py-3 sm:px-6">
-          <TestModeNotice />
+          <p role="alert" className="text-[13px] text-danger">
+            {failure}
+          </p>
         </div>
       ) : null}
     </section>

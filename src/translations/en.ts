@@ -577,20 +577,6 @@ export const en = {
       revoke: "Sign out",
       unavailable: "Your sessions could not be loaded. Try again in a moment.",
     },
-
-    /** TEMPORARY - a testing switch. Remove with `features/testing`. */
-    emptyView: {
-      title: "Testing",
-      intro:
-        "Tools for checking screens that are hard to reach with real data.",
-      label: "Empty view testing mode",
-      description:
-        "Makes the locations lists answer as if they were empty, so their first-run and no-results screens can be checked. Your club is real data and isn't affected. Nothing is deleted - turn it off and everything is still there.",
-      active:
-        "Empty view mode is on. Screens across the app will look empty until you turn it off, and nothing you save is kept.",
-      /** Where a save was stopped because the mode is on. */
-      blocked: "Testing mode is on - nothing was saved.",
-    },
   },
 
   errors: {

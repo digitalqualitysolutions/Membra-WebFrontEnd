@@ -14,14 +14,14 @@ import {
   type ClubActivity,
   type ClubLanguageOption,
 } from "@/features/club/api/club-wire";
+import { listLocations } from "@/features/club/api/location-endpoints";
+import { toClubLocations } from "@/features/club/api/location-wire";
 import { countryName, countryOptions } from "@/features/club/countries";
-import { dummyLocations } from "@/features/club/dummy-club";
 import type {
   ClubContact,
   ClubDetails,
   ClubLocation,
 } from "@/features/club/types";
-import { isEmptyViewMode } from "@/features/testing/server/empty-view-mode";
 import { ApiError } from "@/lib/http/api-error";
 
 /**
@@ -77,16 +77,44 @@ export async function clubContacts(): Promise<ClubContact[]> {
 }
 
 /**
- * STILL DUMMY - the halls, zones and courts on the club card.
+ * The club's halls, zones and courts, as a tree the tables can draw.
  *
- * No locations endpoint exists, so these come from `dummy-club.ts`, and the
- * empty-view testing switch still applies to them.
+ * Asked of `GET /clubs/{clubId}/locations`, against the same club the screen
+ * is showing. The club record comes along because the API names a location's
+ * site by id and the table shows the club's own short code for it; both calls
+ * are deduped per request, so asking here costs nothing the page didn't
+ * already pay.
+ *
+ * Never throws, the way the activities don't. This is one card on a page full
+ * of them, and a locations call that fails must cost the admin that card
+ * rather than the whole club screen - it reads as "no locations yet", with the
+ * reason in the server log.
  */
 export async function clubLocations(): Promise<ClubLocation[]> {
-  // TEMPORARY testing switch - see `features/testing`. Delete with it.
-  if (await isEmptyViewMode()) return [];
+  const token = await readSessionToken();
+  if (!token) return [];
 
-  return dummyLocations;
+  const [clubId] = await listMyClubIds(token);
+  if (clubId === undefined) return [];
+
+  try {
+    const [club, rows] = await Promise.all([
+      getClub(clubId, token),
+      listLocations(clubId, token),
+    ]);
+
+    const shortById = new Map(
+      club.addresses.map((address) => [address.id, address.shortName]),
+    );
+
+    return toClubLocations(rows, (addressId) =>
+      addressId === null ? null : (shortById.get(addressId) ?? null),
+    );
+  } catch (error) {
+    console.error("[locations] could not be loaded", error);
+
+    return [];
+  }
 }
 
 /**

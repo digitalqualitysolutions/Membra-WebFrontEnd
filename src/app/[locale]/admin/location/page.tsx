@@ -8,7 +8,6 @@ import { requireSession } from "@/features/auth/server/session";
 import { clubDetails } from "@/features/club/services/club-details";
 import { LocationsOverviewTable } from "@/features/location/components/locations-overview-table";
 import { locationOverview } from "@/features/location/services/location-overview";
-import { isEmptyViewMode } from "@/features/testing/server/empty-view-mode";
 
 export async function generateMetadata({
   params,
@@ -69,11 +68,12 @@ export default async function Location({
       <div className="flex w-full flex-1 flex-col">
         <LocationsOverviewTable
           locations={locations}
+          // Which club a new location is created under. No club record means
+          // there is nothing to create one in, and the panel disables Save.
+          clubId={club?.id ?? null}
           // No club record yet means no addresses to parent a hub to, and
           // the dropdown simply offers nothing rather than breaking.
           addresses={club?.addresses ?? []}
-          // TEMPORARY testing switch - see `features/testing`.
-          testMode={await isEmptyViewMode()}
         />
       </div>
     </AppShell>

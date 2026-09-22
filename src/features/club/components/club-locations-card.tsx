@@ -41,8 +41,19 @@ const trailingToggles = [
   { key: "active", label: "active" },
 ] as const;
 
-/** Indent per level. A map rather than a computed class, which Tailwind can't see. */
-const indents = ["", "pl-4", "pl-8"] as const;
+/**
+ * Indent per level, in pixels, as a style rather than a class.
+ *
+ * Nesting is unbounded - any location can be given children - so there's no
+ * fixed list of classes to pick from, and Tailwind can't see a class it would
+ * have to run the code to find out. Capped so a deep branch still leaves the
+ * name column readable.
+ */
+const INDENT_STEP = 16;
+const INDENT_MAX = 96;
+
+const indentFor = (depth: number) =>
+  Math.min(depth * INDENT_STEP, INDENT_MAX);
 
 /**
  * The halls, zones and courts the club books.
@@ -69,7 +80,7 @@ export function ClubLocationsCard({
   const [open, setOpen] = useState(true);
   const [query, setQuery] = useState("");
 
-  /** Branches folded away, by the short code of the node that heads them. */
+  /** Branches folded away, by the id of the node that heads them. */
   const [folded, setFolded] = useState<readonly string[]>([]);
 
   const shown = editing ? rows : locations;
@@ -98,36 +109,29 @@ export function ClubLocationsCard({
   }));
 
   /**
-   * `i (Hafnia inde)` - what a zone or court sits under.
+   * `HH.i (Hafnia inde)` - what a location sits under.
    *
-   * A zone's own name carries its hub's short code, so the option reads the
-   * hub's full name instead: the code is already in the value beside it.
+   * Every row is offered, courts included: a court is only a leaf until
+   * something is put under it. Keyed by id and labelled by the dotted code,
+   * because short codes repeat - `1 (Bane 1)` would read the same for every
+   * hall, and picking one would resolve to whichever matched first.
    */
-  const locationOptions = shown
-    .filter((location) => location.kind !== "court")
-    .map((location) => {
-      const parent = shown.find((row) => row.short === location.parentLocation);
-
-      const name = parent
-        ? `${parent.name} ${location.name.replace(parent.short, "").trim()}`
-        : location.name;
-
-      return { value: location.short, label: `${location.short} (${name})` };
-    });
+  const locationOptions = shown.map((location) => ({
+    value: location.id,
+    label: `${location.show} (${location.name})`,
+  }));
 
   /**
-   * The nodes that can head a branch, by short code.
+   * Every row by id, for walking up a parent chain.
    *
-   * Courts are left out on purpose: their codes repeat - every hall has a Bane
-   * 1 - and nothing is ever parented to one, so including them would only let
-   * a duplicate overwrite a real parent.
+   * By id rather than short code, and with nothing left out: any location can
+   * head a branch, and short codes repeat - every hall has a `Bane 1` - so a
+   * map keyed by code would answer with whichever one it saw last.
    */
-  const parentsByShort = useMemo(() => {
+  const byId = useMemo(() => {
     const map = new Map<string, ClubLocation>();
 
-    for (const location of shown) {
-      if (location.kind !== "court") map.set(location.short, location);
-    }
+    for (const location of shown) map.set(location.id, location);
 
     return map;
   }, [shown]);
@@ -140,7 +144,7 @@ export function ClubLocationsCard({
 
     while (parent) {
       if (folded.includes(parent)) return true;
-      parent = parentsByShort.get(parent)?.parentLocation ?? null;
+      parent = byId.get(parent)?.parentLocation ?? null;
     }
 
     return false;
@@ -257,9 +261,9 @@ export function ClubLocationsCard({
 
                 {visible.map((location) => {
                   const heads = shown.some(
-                    (row) => row.parentLocation === location.short,
+                    (row) => row.parentLocation === location.id,
                   );
-                  const shut = folded.includes(location.short);
+                  const shut = folded.includes(location.id);
 
                   return (
                   <tr
@@ -271,10 +275,8 @@ export function ClubLocationsCard({
                   >
                     <Td>
                       <div
-                        className={cn(
-                          "flex items-center gap-2",
-                          indents[location.depth] ?? "",
-                        )}
+                        className="flex items-center gap-2"
+                        style={{ paddingLeft: indentFor(location.depth) }}
                       >
                         {/* A node with something under it folds; a court has
                             nothing to fold, so it keeps the guide that says
@@ -286,11 +288,9 @@ export function ClubLocationsCard({
                             aria-label={location.name}
                             onClick={() =>
                               setFolded((current) =>
-                                current.includes(location.short)
-                                  ? current.filter(
-                                      (short) => short !== location.short,
-                                    )
-                                  : [...current, location.short],
+                                current.includes(location.id)
+                                  ? current.filter((id) => id !== location.id)
+                                  : [...current, location.id],
                               )
                             }
                             className="inline-flex size-4 shrink-0 items-center justify-center rounded text-ink-muted transition-colors outline-none hover:text-ink focus-visible:ring-2 focus-visible:ring-ring/40"
@@ -356,8 +356,11 @@ export function ClubLocationsCard({
                     <Td>
                       <RoutingSelect
                         value={location.parentLocation}
+                        // Not itself. Its descendants are still offered, which
+                        // would make a cycle - the card doesn't save locations
+                        // yet, and guarding it belongs with the call that does.
                         options={locationOptions.filter(
-                          (option) => option.value !== location.short,
+                          (option) => option.value !== location.id,
                         )}
                         disabled={!editing}
                         label={t("columns.parentLocation")}
