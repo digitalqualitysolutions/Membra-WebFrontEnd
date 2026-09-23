@@ -148,7 +148,7 @@ already type-checks on its own, which is what CI relies on).
 ## Deploy (Scaleway test via GitHub Actions)
 
 You create Scaleway resources in the console. GitHub Actions does not
-provision them. Pushing to `develop` runs
+provision them. Pushing to `test` runs
 [`.github/workflows/deploy-test.yml`](.github/workflows/deploy-test.yml):
 lint/build (build type-checks), push a Docker image, update the Serverless
 Container, then `GET /api/health`.
