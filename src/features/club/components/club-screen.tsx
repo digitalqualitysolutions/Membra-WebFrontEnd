@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useCallback, useState } from "react";
 
 import { Icon } from "@/components/icons";
+import { LoadFailed } from "@/components/ui/load-failed";
 import type {
   ClubActivity,
   ClubLanguageOption,
@@ -19,6 +20,7 @@ import type {
   ClubDetails,
   ClubLocation,
 } from "@/features/club/types";
+import type { Loaded } from "@/lib/loaded";
 
 /**
  * Either the club, or the screen that creates one.
@@ -40,15 +42,16 @@ export function ClubScreen({
   contacts,
   locations,
 }: {
-  /** `null` for an admin whose club hasn't been set up yet. */
-  club: ClubDetails | null;
+  /** The club, `null` for an admin who hasn't set one up, or a failed read. */
+  club: Loaded<ClubDetails | null>;
   activities: readonly ClubActivity[];
   languages: readonly ClubLanguageOption[];
   countries: readonly { code: string; name: string }[];
   contacts: ClubContact[];
-  locations: ClubLocation[];
+  locations: Loaded<ClubLocation[]>;
 }) {
   const t = useTranslations("club");
+  const tError = useTranslations("errorPage");
 
   /**
    * The club as the API last answered it.
@@ -57,7 +60,7 @@ export function ClubScreen({
    * and a third reads its addresses, so a copy kept inside one of them would
    * leave the others showing what the club looked like before the save.
    */
-  const [club, setClub] = useState(saved);
+  const [club, setClub] = useState(saved.ok ? saved.data : null);
 
   /** Set only by creating one here, so a club that already existed never sees it. */
   const [justCreated, setJustCreated] = useState(false);
@@ -67,6 +70,19 @@ export function ClubScreen({
     setClub(next);
     setJustCreated(true);
   }, []);
+
+  /*
+   * The club couldn't be read. Not the setup card: we don't know that there
+   * isn't a club, and offering to create one would hand the admin a second.
+   * Only until the first save - after that `club` is what the API returned.
+   */
+  if (!saved.ok && !club) {
+    return (
+      <div className="flex flex-1 flex-col">
+        <LoadFailed title={tError("partClub")} />
+      </div>
+    );
+  }
 
   /*
    * No club yet: the setup card is the whole page.
@@ -130,11 +146,16 @@ export function ClubScreen({
 
         {/* The club's own addresses go along: a hub is parented to one of
             them, so the dropdown offers what the card above already has. */}
-        <ClubLocationsCard
-          locations={locations}
-          clubId={club.id}
-          addresses={club.addresses}
-        />
+        {locations.ok ? (
+          <ClubLocationsCard
+            locations={locations.data}
+            clubId={club.id}
+            addresses={club.addresses}
+          />
+        ) : (
+          // The record above it still rendered, so only this card is missing.
+          <LoadFailed title={tError("partLocations")} />
+        )}
       </div>
     </>
   );

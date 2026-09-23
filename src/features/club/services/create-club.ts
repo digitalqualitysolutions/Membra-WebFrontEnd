@@ -74,7 +74,7 @@ export async function createClubAction(
     const club = await createClub(toCreateClubForm(parsed.data, avatar), token);
 
     // Both screens read the club: its record here, its addresses for the
-    // locations form's "parent site".
+    // locations form's "parent address".
     revalidatePath(`/${locale}/admin/club`);
     revalidatePath(`/${locale}/admin/location`);
 

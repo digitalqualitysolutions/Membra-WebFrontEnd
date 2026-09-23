@@ -149,7 +149,7 @@ export async function saveClubAction(
     }
   }
 
-  // Both screens read the club: its record, and its addresses as parent sites.
+  // Both screens read the club: its record, and its addresses as parent addresses.
   revalidatePath(`/${locale}/admin/club`);
   revalidatePath(`/${locale}/admin/location`);
 

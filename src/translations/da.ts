@@ -423,7 +423,7 @@ export const da: Dictionary = {
       shortPlaceholder: "Forkortelse",
       shortTaken: "“{short}” er allerede brugt her. Vælg en anden.",
       shortInvalid: "En forkortelse må ikke indeholde punktum eller mellemrum.",
-      parentSite: "Overordnet sted",
+      parentSite: "Overordnet adresse",
       parentLocation: "Overordnet lokation",
       memberBookable: "Medl. kan booke",
       toBook: "# der kan bookes",
@@ -452,7 +452,7 @@ export const da: Dictionary = {
       tip2: "Tip 2: Opret alle øverste forældre, før du opretter næste niveau af lokationer.",
 
       terms: {
-        parentSite: "Overordnet sted",
+        parentSite: "Overordnet adresse",
         parentLocation: "Overordnet lokation",
         memberBookable: "Medlem kan booke",
         toBook: "# der skal booke",
@@ -463,9 +463,9 @@ export const da: Dictionary = {
 
       defs: {
         parentSite:
-          "Bruges kun, når lokationen har en unik adresse. F.eks. ville „Klubhal“ fra eksemplet ovenfor sandsynligvis have et overordnet sted med en adresse, mens „Hal 1“ ikke ville have et overordnet sted, men i stedet en overordnet lokation, nemlig „Klubhal“.",
+          "Bruges kun, når lokationen har en unik adresse. F.eks. ville „Klubhal“ fra eksemplet ovenfor sandsynligvis have en overordnet adresse, mens „Hal 1“ ikke ville have en overordnet adresse, men i stedet en overordnet lokation, nemlig „Klubhal“.",
         parentLocation:
-          "„Forælderen“ til en „barne“-lokation, når der ikke gælder et overordnet sted.",
+          "„Forælderen“ til en „barne“-lokation, når der ikke gælder en overordnet adresse.",
         memberBookable:
           "Bestemmer, om klubbens medlemmer kan booke lokationen og dermed reservere den til eget brug. En tennisbane vil sandsynligvis kunne bookes af medlemmer, mens en stor svømmehal måske ikke kan.",
         toBook:
@@ -533,6 +533,10 @@ export const da: Dictionary = {
     title: "Noget gik galt",
     description:
       "Denne side kunne ikke indlæses. Det hjælper som regel at prøve igen; ellers så vend tilbage om lidt.",
+    partDescription:
+      "Det hjælper som regel at prøve igen; resten af siden er upåvirket.",
+    partClub: "Klubbens oplysninger kunne ikke indlæses",
+    partLocations: "Lokationer kunne ikke indlæses",
     retry: "Prøv igen",
     backToLogin: "Tilbage til log ind",
     reference: "Reference",

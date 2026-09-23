@@ -23,6 +23,7 @@ import type {
   ClubLocation,
 } from "@/features/club/types";
 import { ApiError } from "@/lib/http/api-error";
+import { loaded, LOAD_FAILED, type Loaded } from "@/lib/loaded";
 
 /**
  * What the club screen reads.
@@ -33,35 +34,38 @@ import { ApiError } from "@/lib/http/api-error";
  */
 
 /**
- * The admin's club, or `null` when they don't run one.
+ * The admin's club, `null` when they don't run one, or a failure.
  *
  * Asked of the API: `GET /clubs` lists the clubs the member admins, and the
  * first one is the club this screen shows. The screen manages one club; a
  * member who runs several sees the first by name until it offers a choice.
  *
  * An empty list, or a club that's gone (404), really is "no club", and the
- * setup screen is the right answer. Anything else is thrown: an API that
- * failed must not read as "you have no club", or the admin would be offered to
- * create a second one.
+ * setup screen is the right answer. Anything else reads as a failure rather
+ * than as an absence - answering `null` there would offer to create a club the
+ * admin already has. Nothing throws: a failure costs this screen its cards,
+ * not the whole page.
  */
-export async function clubDetails(): Promise<ClubDetails | null> {
+export async function clubDetails(): Promise<Loaded<ClubDetails | null>> {
   const token = await readSessionToken();
-  if (!token) return null;
-
-  const [clubId] = await listMyClubIds(token);
-  if (clubId === undefined) return null;
+  if (!token) return loaded(null);
 
   try {
+    const [clubId] = await listMyClubIds(token);
+    if (clubId === undefined) return loaded(null);
+
     const [club, locale] = await Promise.all([
       getClub(clubId, token),
       getLocale(),
     ]);
 
-    return toClubDetails(club, (code) => countryName(code, locale));
+    return loaded(toClubDetails(club, (code) => countryName(code, locale)));
   } catch (error) {
-    if (ApiError.isApiError(error) && error.status === 404) return null;
+    if (ApiError.isApiError(error) && error.status === 404) return loaded(null);
 
-    throw error;
+    console.error("[club] could not be loaded", error);
+
+    return LOAD_FAILED;
   }
 }
 
@@ -85,19 +89,19 @@ export async function clubContacts(): Promise<ClubContact[]> {
  * are deduped per request, so asking here costs nothing the page didn't
  * already pay.
  *
- * Never throws, the way the activities don't. This is one card on a page full
- * of them, and a locations call that fails must cost the admin that card
- * rather than the whole club screen - it reads as "no locations yet", with the
- * reason in the server log.
+ * Never throws. This is one card on a page full of them, and a locations call
+ * that fails must cost the admin that card rather than the whole club screen.
+ * A failure says so rather than reading as "no locations yet": an empty table
+ * over a dead API invites someone to re-create rows that already exist.
  */
-export async function clubLocations(): Promise<ClubLocation[]> {
+export async function clubLocations(): Promise<Loaded<ClubLocation[]>> {
   const token = await readSessionToken();
-  if (!token) return [];
-
-  const [clubId] = await listMyClubIds(token);
-  if (clubId === undefined) return [];
+  if (!token) return loaded([]);
 
   try {
+    const [clubId] = await listMyClubIds(token);
+    if (clubId === undefined) return loaded([]);
+
     const [club, rows] = await Promise.all([
       getClub(clubId, token),
       listLocations(clubId, token),
@@ -107,13 +111,20 @@ export async function clubLocations(): Promise<ClubLocation[]> {
       club.addresses.map((address) => [address.id, address.shortName]),
     );
 
-    return toClubLocations(rows, (addressId) =>
-      addressId === null ? null : (shortById.get(addressId) ?? null),
+    return loaded(
+      toClubLocations(rows, (addressId) =>
+        addressId === null ? null : (shortById.get(addressId) ?? null),
+      ),
     );
   } catch (error) {
+    // A club that isn't there has no locations - the same reading `clubDetails`
+    // gives a 404, and the two have to agree. Answering "couldn't be loaded"
+    // here told an admin with no club yet that the API was broken.
+    if (ApiError.isApiError(error) && error.status === 404) return loaded([]);
+
     console.error("[locations] could not be loaded", error);
 
-    return [];
+    return LOAD_FAILED;
   }
 }
 

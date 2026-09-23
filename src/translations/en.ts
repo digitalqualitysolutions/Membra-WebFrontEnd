@@ -482,7 +482,7 @@ export const en = {
       shortTaken: "“{short}” is already used in this location. Pick another.",
       /** A dot is the separator in the shown name, so it can't sit inside one. */
       shortInvalid: "A short code can't contain a dot or a space.",
-      parentSite: "Parent site",
+      parentSite: "Parent address",
       parentLocation: "Parent location",
       memberBookable: "Mbr bookable",
       toBook: "# to book",
@@ -517,7 +517,7 @@ export const en = {
       tip2: "Tip 2: Create all top parents, before creating the next level of locations.",
 
       terms: {
-        parentSite: "Parent site",
+        parentSite: "Parent address",
         parentLocation: "Parent location",
         memberBookable: "Member bookable",
         toBook: "# to book",
@@ -528,9 +528,9 @@ export const en = {
 
       defs: {
         parentSite:
-          "Only used, when there is a unique address to the location. E.g. “Club Hall” from the example above would probably have a parent site, with an address, whereas “Hall 1” would not have a parent site, but instead a parent location being “Club Hall”.",
+          "Only used, when there is a unique address to the location. E.g. “Club Hall” from the example above would probably have a parent address, whereas “Hall 1” would not have a parent address, but instead a parent location being “Club Hall”.",
         parentLocation:
-          "The “parent” of a “child” location, when no Parent site apply.",
+          "The “parent” of a “child” location, when no Parent address apply.",
         memberBookable:
           "Determines whether club members can book the location and thereby reserve it for their personal use. A tennis court would probably be “Mbr bookable” whereas a big swimming pool might not be.",
         toBook:
@@ -604,6 +604,12 @@ export const en = {
     title: "Something went wrong",
     description:
       "This page could not be loaded. Trying again often works; if it does not, come back in a moment.",
+    /** Under one card that failed while the rest of the page rendered. */
+    partDescription:
+      "Trying again often works; the rest of this page is unaffected.",
+    /** Names the part that failed, in the space that part would have filled. */
+    partClub: "The club record couldn't be loaded",
+    partLocations: "Locations couldn't be loaded",
     retry: "Try again",
     backToLogin: "Back to log in",
     /** Label for the `digest` React attaches to a server error. */

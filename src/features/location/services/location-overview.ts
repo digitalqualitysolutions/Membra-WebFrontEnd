@@ -1,5 +1,6 @@
 import { clubLocations } from "@/features/club/services/club-details";
 import type { LocationRow } from "@/features/location/types";
+import { loaded, LOAD_FAILED, type Loaded } from "@/lib/loaded";
 
 /**
  * What the locations overview reads.
@@ -16,13 +17,17 @@ import type { LocationRow } from "@/features/location/types";
  * `dummy-location.ts` still holds worked examples of all three for whenever
  * those land.
  */
-export async function locationOverview(): Promise<LocationRow[]> {
+export async function locationOverview(): Promise<Loaded<LocationRow[]>> {
   const locations = await clubLocations();
 
-  return locations.map((location) => ({
-    ...location,
-    site: null,
-    surface: null,
-    groups: [],
-  }));
+  if (!locations.ok) return LOAD_FAILED;
+
+  return loaded(
+    locations.data.map((location) => ({
+      ...location,
+      site: null,
+      surface: null,
+      groups: [],
+    })),
+  );
 }

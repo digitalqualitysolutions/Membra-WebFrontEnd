@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 
 import { AppShell } from "@/components/layout/app-shell";
+import { LoadFailed } from "@/components/ui/load-failed";
 import { isLocale } from "@/config/locales";
 import { requireSession } from "@/features/auth/server/session";
 import { clubDetails } from "@/features/club/services/club-details";
@@ -42,9 +43,10 @@ export default async function Location({
   // Guard on the page, not the layout. Layouts don't re-render between
   // navigations, so a check up there quietly stops running.
   const user = await requireSession(locale);
+  const t = await getTranslations({ locale });
 
   // The club's own addresses go along: a hub is parented to one of them, so
-  // the "parent site" dropdown offers what the club record already has.
+  // the "parent address" dropdown offers what the club record already has.
   const [locations, club] = await Promise.all([
     locationOverview(),
     clubDetails(),
@@ -66,15 +68,21 @@ export default async function Location({
           belongs once there are locations, and the first one is created in
           the browser, after this render has finished. */}
       <div className="flex w-full flex-1 flex-col">
-        <LocationsOverviewTable
-          locations={locations}
-          // Which club a new location is created under. No club record means
-          // there is nothing to create one in, and the panel disables Save.
-          clubId={club?.id ?? null}
-          // No club record yet means no addresses to parent a hub to, and
-          // the dropdown simply offers nothing rather than breaking.
-          addresses={club?.addresses ?? []}
-        />
+        {locations.ok ? (
+          <LocationsOverviewTable
+            locations={locations.data}
+            // Which club a new location is created under. No club record means
+            // there is nothing to create one in, and the panel disables Save.
+            clubId={club.ok ? (club.data?.id ?? null) : null}
+            // No club record yet means no addresses to parent a hub to, and
+            // the dropdown simply offers nothing rather than breaking.
+            addresses={club.ok ? (club.data?.addresses ?? []) : []}
+          />
+        ) : (
+          // The shell, header and navigation all rendered; only the table is
+          // missing, and its own Try again reloads just this page.
+          <LoadFailed title={t("errorPage.partLocations")} />
+        )}
       </div>
     </AppShell>
   );
