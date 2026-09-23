@@ -60,6 +60,36 @@ export type CompleteProfileRequest = z.infer<typeof completeProfileRequestSchema
 export type CompleteProfileProblem = "date" | "gender";
 
 /**
+ * The API's id for an app locale. `da` is `da`; `en` is `en-US`.
+ *
+ * The form works in the locales the portal speaks, because the value picked
+ * also decides which language the rest of the app renders in. The API stores a
+ * row from its own language table instead, and the two don't spell a language
+ * the same way - sending `en` comes back as `400 Invalid preferredLang value`.
+ *
+ * Matched against the catalogue rather than mapped by hand, so a table that
+ * gains a variant doesn't need a code change. `null` when nothing matches,
+ * which the caller logs: it means the catalogue couldn't be read, or the
+ * portal speaks a language the API has never heard of.
+ */
+export function toPreferredLang(
+  locale: string,
+  languages: readonly { id: string }[],
+): string | null {
+  const wanted = locale.toLowerCase();
+
+  const exact = languages.find((row) => row.id.toLowerCase() === wanted);
+  if (exact) return exact.id;
+
+  // `en` matches `en-US`: the catalogue names a region, the locale doesn't.
+  const regional = languages.find((row) =>
+    row.id.toLowerCase().startsWith(`${wanted}-`),
+  );
+
+  return regional?.id ?? null;
+}
+
+/**
  * Turn validated form values into the API's shape.
  *
  * The form holds a gender word; the API wants that word's id, looked up in the
@@ -75,6 +105,7 @@ export type CompleteProfileProblem = "date" | "gender";
 export function toCompleteProfileRequest(
   values: ProfileFormValues,
   genders: readonly Gender[],
+  languages: readonly { id: string }[],
 ): CompleteProfileRequest | CompleteProfileProblem {
   const dob = parseDayMonthYear(values.dateOfBirth);
   if (!dob) return "date";
@@ -88,6 +119,14 @@ export function toCompleteProfileRequest(
     nickname: values.nickname,
     dob: toIsoDate(dob),
     genderId: gender.id,
-    preferredLang: values.preferredLanguage,
+    /*
+     * The locale itself when the catalogue had no id for it. No better guess
+     * exists, and it's what was being sent before - so a member whose locale
+     * the API does recognise still saves, rather than being blocked by a
+     * catalogue that happened to be unreachable.
+     */
+    preferredLang:
+      toPreferredLang(values.preferredLanguage, languages) ??
+      values.preferredLanguage,
   };
 }

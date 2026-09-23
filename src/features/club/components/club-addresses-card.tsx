@@ -206,6 +206,18 @@ export function ClubAddressesCard({
     if (club.addresses.length === 0) setPrimary(key);
   }
 
+  /**
+   * Add a row, opening the card's edit first if it isn't already.
+   *
+   * A club with no addresses has no pencil - there's nothing to edit yet - so
+   * this button is the way into the edit as well as the way to add a row.
+   */
+  function add() {
+    if (!editing) setEditing(true);
+
+    addRow();
+  }
+
   function removeNewRow(key: string) {
     setNewRows((rows) => rows.filter((row) => row.key !== key));
 
@@ -340,15 +352,19 @@ export function ClubAddressesCard({
         title={t("addresses.title")}
         description={t("addresses.description")}
         editLabel={t("addresses.editAll")}
-        onEdit={toggleEditing}
+        // No pencil until there's an address to edit - the Add button beside
+        // it is the way in instead, the way the contact card does it.
+        onEdit={club.addresses.length > 0 ? toggleEditing : undefined}
         aside={
-          editing ? (
+          // Shown while editing, and on an empty card where it stands in for
+          // the pencil: without it a club with no addresses couldn't add one.
+          editing || club.addresses.length === 0 ? (
             <Button
               type="button"
               variant="outline"
               size="sm"
               disabled={saving}
-              onClick={addRow}
+              onClick={add}
             >
               <Icon name="add" size="xs" />
               {t("addresses.add")}

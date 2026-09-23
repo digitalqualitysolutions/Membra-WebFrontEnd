@@ -7,12 +7,16 @@ import { redirect } from "next/navigation";
 import { isLocale } from "@/config/locales";
 import { readSessionToken } from "@/features/auth/server/session-cookie";
 import { completeProfile } from "@/features/onboarding/api/profile-endpoints";
-import { toCompleteProfileRequest } from "@/features/onboarding/api/profile-wire";
+import {
+  toCompleteProfileRequest,
+  toPreferredLang,
+} from "@/features/onboarding/api/profile-wire";
 import { createProfileSchema } from "@/features/onboarding/schemas";
 import {
   availableGenders,
   genderList,
 } from "@/features/onboarding/services/genders";
+import { languageList } from "@/features/onboarding/services/languages";
 import type {
   ProfilePayload,
   ProfileState,
@@ -57,7 +61,21 @@ export async function updateProfileAction(
   const token = await readSessionToken();
   if (!token) redirect(`/${locale}/login`);
 
-  const body = toCompleteProfileRequest(parsed.data, await genderList());
+  const languages = await languageList();
+
+  if (!toPreferredLang(parsed.data.preferredLanguage, languages)) {
+    console.error(
+      `[update-profile] no language id for "${parsed.data.preferredLanguage}" in [${languages
+        .map((row) => row.id)
+        .join(", ")}]`,
+    );
+  }
+
+  const body = toCompleteProfileRequest(
+    parsed.data,
+    await genderList(),
+    languages,
+  );
 
   if (typeof body === "string") {
     // The schema already accepted these values, so failing here is ours: a

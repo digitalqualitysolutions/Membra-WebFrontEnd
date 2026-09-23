@@ -395,7 +395,11 @@ export function ClubLocationsCard({
         collapseLabel={t("title")}
         title={t("title")}
         editLabel={t("editAll")}
-        onEdit={toggleEditing}
+        // No pencil over an empty table: it only renames and re-parents rows
+        // that exist, and locations are added on the locations page. Gated on
+        // what's saved, not on what the filter leaves - a search that matches
+        // nothing still has rows worth editing behind it.
+        onEdit={locations.length > 0 ? toggleEditing : undefined}
         aside={
           <div className="relative">
             <Icon

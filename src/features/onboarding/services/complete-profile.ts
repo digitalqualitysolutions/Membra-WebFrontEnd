@@ -5,7 +5,10 @@ import { redirect } from "next/navigation";
 
 import { isLocale } from "@/config/locales";
 import { readSessionToken } from "@/features/auth/server/session-cookie";
-import { toCompleteProfileRequest } from "@/features/onboarding/api/profile-wire";
+import {
+  toCompleteProfileRequest,
+  toPreferredLang,
+} from "@/features/onboarding/api/profile-wire";
 import { completeProfile } from "@/features/onboarding/api/profile-endpoints";
 import type {
   ProfilePayload,
@@ -16,6 +19,7 @@ import {
   availableGenders,
   genderList,
 } from "@/features/onboarding/services/genders";
+import { languageList } from "@/features/onboarding/services/languages";
 import { ApiError, NetworkError } from "@/lib/http/api-error";
 import { fieldErrorsFrom } from "@/lib/form";
 
@@ -51,7 +55,19 @@ export async function completeProfileAction(
   const token = await readSessionToken();
   if (!token) redirect(`/${locale}/login`);
 
-  const body = toCompleteProfileRequest(values, await genderList());
+  const languages = await languageList();
+
+  if (!toPreferredLang(values.preferredLanguage, languages)) {
+    // Not fatal - the locale goes up as-is below - but it's why a save would
+    // come back "Invalid preferredLang value", so it gets named here.
+    console.error(
+      `[complete-profile] no language id for "${values.preferredLanguage}" in [${languages
+        .map((row) => row.id)
+        .join(", ")}]`,
+    );
+  }
+
+  const body = toCompleteProfileRequest(values, await genderList(), languages);
 
   if (typeof body === "string") {
     // The schema already accepted these values, so failing here is ours: a
