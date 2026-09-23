@@ -1,7 +1,5 @@
 import "server-only";
 
-import { getLocale } from "next-intl/server";
-
 import { readSessionToken } from "@/features/auth/server/session-cookie";
 import {
   getClub,
@@ -16,7 +14,6 @@ import {
 } from "@/features/club/api/club-wire";
 import { listLocations } from "@/features/club/api/location-endpoints";
 import { toClubLocations } from "@/features/club/api/location-wire";
-import { countryName, countryOptions } from "@/features/club/countries";
 import type {
   ClubContact,
   ClubDetails,
@@ -67,12 +64,7 @@ export async function clubDetails(): Promise<Loaded<ClubDetails | null>> {
   if (clubId === undefined) return loaded(null);
 
   try {
-    const [club, locale] = await Promise.all([
-      getClub(clubId, token),
-      getLocale(),
-    ]);
-
-    return loaded(toClubDetails(club, (code) => countryName(code, locale)));
+    return loaded(toClubDetails(await getClub(clubId, token)));
   } catch (error) {
     // Documented here, and it means the club is gone rather than never was.
     if (ApiError.isApiError(error) && error.status === 404) return loaded(null);
@@ -187,11 +179,4 @@ export async function clubLanguages(): Promise<readonly ClubLanguageOption[]> {
 
     return [];
   }
-}
-
-/** The countries a club can be registered in, named in the page's language. */
-export async function clubCountries(): Promise<
-  readonly { code: string; name: string }[]
-> {
-  return countryOptions(await getLocale());
 }

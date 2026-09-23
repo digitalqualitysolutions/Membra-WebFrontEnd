@@ -46,7 +46,6 @@ export type ClubDetails = {
   /** The same activities by id, for picking. */
   activityIds: number[];
   languages: ClubLanguage[];
-  country: { code: string; name: string };
   addresses: ClubAddress[];
   /**
    * The club's logo as an image URL, or `null` for none - the club's mark
@@ -70,7 +69,6 @@ export type ClubFormValues = {
   /** Codes from `GET /clubs/languages`. The primary one is required. */
   primaryLanguageId: string | null;
   secondaryLanguageId: string | null;
-  country: string;
   active: boolean;
   avatar: string | null;
 };

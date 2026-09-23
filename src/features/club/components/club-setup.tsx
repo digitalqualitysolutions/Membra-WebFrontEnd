@@ -15,13 +15,6 @@ import { EmptyState } from "@/components/layout/empty-state";
 import { Button } from "@/components/ui/button";
 import { DateInput } from "@/components/ui/date-input";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import type {
   ClubActivity,
   ClubLanguageOption,
@@ -41,7 +34,6 @@ import {
   ClubAvatarPicker,
   LanguageSelect,
   compactInput,
-  compactTrigger,
 } from "@/features/club/components/record-parts";
 import { createClubAction } from "@/features/club/services/create-club";
 import { usePhotoCropLabels } from "@/features/onboarding/components/crop-dialog";
@@ -51,7 +43,6 @@ import {
 } from "@/features/club/services/state";
 import type { ClubDetails } from "@/features/club/types";
 import { dayMonthYearToIso } from "@/lib/date";
-import { cn } from "@/lib/utils";
 
 /** An address as it's being typed, with a key of its own for the list. */
 type AddressDraft = NewAddressValues & { id: string };
@@ -77,12 +68,10 @@ const blankAddress = (id: string): AddressDraft => ({
 export function ClubSetup({
   activities,
   languages,
-  countries,
   onCreate,
 }: {
   activities: readonly ClubActivity[];
   languages: readonly ClubLanguageOption[];
-  countries: readonly { code: string; name: string }[];
   /** Called with the club the API stored, to swap this screen for the card. */
   onCreate: (club: ClubDetails) => void;
 }) {
@@ -94,7 +83,6 @@ export function ClubSetup({
 
   const [name, setName] = useState("");
   const [short, setShort] = useState("");
-  const [country, setCountry] = useState(countries[0]?.code ?? "");
   const [established, setEstablished] = useState("");
   // None chosen to start. Optional: a club can be created without any.
   const [activityIds, setActivityIds] = useState<number[]>([]);
@@ -145,7 +133,6 @@ export function ClubSetup({
   const ready =
     name.trim().length > 0 &&
     short.trim().length > 0 &&
-    country.length > 0 &&
     establishedIso !== null &&
     primaryLanguage !== null &&
     addresses.length > 0 &&
@@ -178,7 +165,6 @@ export function ClubSetup({
         locale,
         name,
         shortName: short,
-        countryCode: country,
         establishedDate: established,
         activityIds,
         primaryLanguageId: primaryLanguage,
@@ -247,30 +233,6 @@ export function ClubSetup({
               aria-label={t("fields.short")}
               aria-required
             />
-          </Field>
-
-          <Field
-            label={t("fields.country")}
-            required
-            requiredLabel={t("setup.required")}
-          >
-            <Select value={country} onValueChange={setCountry}>
-              <SelectTrigger
-                className={cn("w-full", compactTrigger)}
-                aria-label={t("fields.country")}
-                aria-required
-              >
-                <SelectValue />
-              </SelectTrigger>
-
-              <SelectContent>
-                {countries.map((item) => (
-                  <SelectItem key={item.code} value={item.code}>
-                    {item.code} ({item.name})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </Field>
 
           <Field

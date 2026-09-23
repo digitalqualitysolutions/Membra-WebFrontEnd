@@ -213,7 +213,7 @@ export const en = {
       /** The first screen: one button. */
       intro: {
         title: "Set up your club",
-        body: "Add your club's name, country and language, and the addresses where it plays. Members, teams and locations are all built on top of this.",
+        body: "Add your club's name and language, and the addresses where it plays. Members, teams and locations are all built on top of this.",
         start: "Add club",
       },
 
@@ -303,7 +303,6 @@ export const en = {
       /** The day-first date field, shared by setup and the club card. */
       datePlaceholder: "DD / MM / YYYY",
       datePicker: "Open calendar",
-      country: "Country",
       avatar: "Club avatar",
       upload: "Upload",
       uploadFormats: "JPG, PNG, HEIC, WebP or AVIF · Max 8MB",

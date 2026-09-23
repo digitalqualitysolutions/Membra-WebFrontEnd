@@ -23,7 +23,6 @@ import {
   toNewClubAddress,
   type ClubPatch,
 } from "@/features/club/api/club-wire";
-import { countryName } from "@/features/club/countries";
 import { clubFailure } from "@/features/club/services/club-errors";
 import type {
   ClubDetailsChange,
@@ -158,9 +157,7 @@ export async function saveClubAction(
   let club: ClubDetails | undefined;
 
   try {
-    club = toClubDetails(await getClub(payload.clubId, token), (code) =>
-      countryName(code, locale),
-    );
+    club = toClubDetails(await getClub(payload.clubId, token));
   } catch (error) {
     const reason = await clubFailure(error, locale, "reload-club");
     formError ??= reason;
@@ -218,7 +215,6 @@ async function saveDetails(
 
   if (details.name !== undefined) patch.name = details.name.trim();
   if (details.shortName !== undefined) patch.shortName = details.shortName.trim();
-  if (details.countryCode !== undefined) patch.countryCode = details.countryCode;
   if (details.active !== undefined) patch.active = details.active;
 
   if (details.activityIds !== undefined) {

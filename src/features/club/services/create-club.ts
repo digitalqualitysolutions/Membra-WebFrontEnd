@@ -15,7 +15,6 @@ import {
   toNewClubAddress,
   type CreateClubRequest,
 } from "@/features/club/api/club-wire";
-import { countryName } from "@/features/club/countries";
 import type {
   CreateClubPayload,
   CreateClubState,
@@ -78,7 +77,7 @@ export async function createClubAction(
     revalidatePath(`/${locale}/admin/club`);
     revalidatePath(`/${locale}/admin/location`);
 
-    return { club: toClubDetails(club, (code) => countryName(code, locale)) };
+    return { club: toClubDetails(club) };
   } catch (error) {
     if (error instanceof NetworkError) {
       console.error("[create-club] upstream unreachable", error.cause);
@@ -123,7 +122,6 @@ function toRequest(payload: CreateClubPayload): CreateClubRequest | null {
     name: payload.name.trim(),
     shortName: payload.shortName.trim(),
     establishedDate,
-    countryCode: payload.countryCode,
     // De-duplicated: the picker can't produce a repeat, but the network can.
     activityIds: [...new Set(payload.activityIds)],
     languages: toLanguageRanks(

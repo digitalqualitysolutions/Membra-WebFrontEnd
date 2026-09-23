@@ -7,13 +7,6 @@ import { useState, useTransition } from "react";
 import { Icon } from "@/components/icons";
 import { DateInput } from "@/components/ui/date-input";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import type {
   ClubActivity,
   ClubLanguageOption,
@@ -32,7 +25,6 @@ import {
   Switch,
   Value,
   compactInput,
-  compactTrigger,
 } from "@/features/club/components/record-parts";
 import type { ClubDetailsChange } from "@/features/club/services/state";
 import { saveClubAction } from "@/features/club/services/update-club";
@@ -70,7 +62,6 @@ function valuesOf(club: ClubDetails): ClubFormValues {
     secondaryLanguageId:
       club.languages.find((language) => language.rank === "secondary")?.id ??
       null,
-    country: club.country.code,
     active: club.active,
     avatar: club.avatar,
   };
@@ -97,13 +88,11 @@ export function ClubDetailsCard({
   club,
   activities,
   languages,
-  countries,
   onSaved,
 }: {
   club: ClubDetails;
   activities: readonly ClubActivity[];
   languages: readonly ClubLanguageOption[];
-  countries: readonly { code: string; name: string }[];
   /** The club as the API now holds it, for the cards that share the record. */
   onSaved: (club: ClubDetails) => void;
 }) {
@@ -180,7 +169,6 @@ export function ClubDetailsCard({
     activityIds: true,
     primaryLanguageId: values.primaryLanguageId !== null,
     secondaryLanguageId: true,
-    country: values.country.length > 0,
     avatar: true,
   };
 
@@ -216,7 +204,6 @@ export function ClubDetailsCard({
       return {
         name: values.name,
         shortName: values.short,
-        countryCode: values.country,
         establishedDate: values.established,
         active: values.active,
         activityIds: values.activityIds,
@@ -239,8 +226,6 @@ export function ClubDetailsCard({
       case "primaryLanguageId":
       case "secondaryLanguageId":
         return { languages, avatar: null };
-      case "country":
-        return { countryCode: values.country, avatar: null };
       case "avatar":
         return avatarFile ? { avatar: avatarFile } : null;
     }
@@ -278,15 +263,6 @@ export function ClubDetailsCard({
       setMode({ kind: "read" });
     });
   }
-
-  /**
-   * The countries to offer, the club's own included. The list is ours and
-   * short; a club registered somewhere it doesn't cover would otherwise open
-   * its dropdown on nothing.
-   */
-  const countryOptions = countries.some((c) => c.code === club.country.code)
-    ? countries
-    : [club.country, ...countries];
 
   return (
     <section className="overflow-hidden rounded-2xl border border-line bg-surface shadow-card">
@@ -515,40 +491,6 @@ export function ClubDetailsCard({
             </div>
           ) : (
             <Value>{t("addresses.none")}</Value>
-          )}
-        </Cell>
-
-        <Cell
-          label={t("fields.country")}
-          editLabel={t("details.editField", { field: t("fields.country") })}
-          onEdit={() => toggle({ kind: "field", field: "country" })}
-        >
-          {editing("country") ? (
-            <Select
-              value={values.country}
-              onValueChange={(value) => setField("country", value)}
-            >
-              <SelectTrigger
-                className={cn("w-full", compactTrigger)}
-                aria-label={t("fields.country")}
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {countryOptions.map((country) => (
-                  <SelectItem key={country.code} value={country.code}>
-                    {country.code} ({country.name})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : (
-            <div className="flex items-baseline gap-2">
-              <Value>{club.country.code}</Value>
-              <span className="text-[13px] text-body">
-                ({club.country.name})
-              </span>
-            </div>
           )}
         </Cell>
 
