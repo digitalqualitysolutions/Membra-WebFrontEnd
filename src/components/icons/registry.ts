@@ -38,6 +38,7 @@ import {
   ShieldCheck,
   Smile,
   SquarePen,
+  Trash2,
   TriangleAlert,
   Trophy,
   Upload,
@@ -157,6 +158,8 @@ export const icons = {
   save: Check,
   /** Adds another row to a list that has one. */
   add: Plus,
+  /** Removes a row for good. Always behind a confirmation. */
+  delete: Trash2,
   /** Replaces a picture the club already has. */
   upload: Upload,
   /** Something worth reading before it becomes a problem. */

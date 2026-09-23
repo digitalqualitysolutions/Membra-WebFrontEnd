@@ -6,6 +6,7 @@ import { SESSION_COOKIE } from "@/features/auth/server/session-cookie";
 import { segment } from "@/features/club/api/club-endpoints";
 import {
   createLocationRequestSchema,
+  deleteLocationResponseSchema,
   locationResponseSchema,
   locationsListResponseSchema,
   updateLocationRequestSchema,
@@ -107,4 +108,31 @@ export async function updateLocation(
   });
 
   return data;
+}
+
+/**
+ * Delete a location and everything under it, for good.
+ *
+ * A hard delete upstream, not a flag: the API takes the location and every
+ * descendant in one call, and there is nothing to undo afterwards. The ids it
+ * answers with are the whole set it removed, target included - which is why
+ * the caller reads them instead of working out the branch itself.
+ *
+ * Admin only.
+ *
+ * @throws {ApiError} 403 without admin rights on the club, 404 for no such
+ *   club or location.
+ */
+export async function deleteLocation(
+  clubId: number,
+  locationId: number,
+  sessionToken: string,
+): Promise<number[]> {
+  const { data } = await api(
+    deleteLocationResponseSchema,
+    `/clubs/${segment(clubId)}/locations/${segment(locationId)}`,
+    { method: "DELETE", headers: withSession(sessionToken) },
+  );
+
+  return data.deletedIds;
 }

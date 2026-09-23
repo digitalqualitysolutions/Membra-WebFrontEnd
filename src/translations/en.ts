@@ -418,6 +418,21 @@ export const en = {
         "A short code is up to 8 characters and can't contain a dot or a space.",
       shortTaken: "“{short}” is already used in this location. Pick another.",
       countInvalid: "Members required to book is a number from 1 to 30.",
+
+      /**
+       * Removing a row. Two questions, because a hall takes everything inside
+       * it and a court takes only itself - see the card.
+       */
+      delete: {
+        /** The bin on a row, read out on its own with nothing around it. */
+        action: "Delete {name}",
+        leafTitle: "Delete {name}?",
+        leafBody: "This location will be removed for good. This can't be undone.",
+        branchTitle: "Delete {name} and everything inside it?",
+        branchBody:
+          "{count, plural, one {# location inside it will be deleted too} other {# locations inside it will be deleted too}}. This can't be undone.",
+        confirm: "Delete",
+      },
     },
   },
 
