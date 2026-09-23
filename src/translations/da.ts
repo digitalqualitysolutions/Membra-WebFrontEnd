@@ -367,6 +367,17 @@ export const da: Dictionary = {
         "En forkortelse er højst 8 tegn og må ikke indeholde punktum eller mellemrum.",
       shortTaken: "“{short}” er allerede brugt her. Vælg en anden.",
       countInvalid: "Antal medlemmer for at booke er et tal fra 1 til 30.",
+
+      delete: {
+        action: "Slet {name}",
+        leafTitle: "Slet {name}?",
+        leafBody:
+          "Denne lokation fjernes permanent. Det kan ikke fortrydes.",
+        branchTitle: "Slet {name} og alt indeni?",
+        branchBody:
+          "{count, plural, one {# lokation indeni slettes også} other {# lokationer indeni slettes også}}. Det kan ikke fortrydes.",
+        confirm: "Slet",
+      },
     },
   },
 

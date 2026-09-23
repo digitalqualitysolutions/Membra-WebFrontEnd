@@ -4,6 +4,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useMemo, useState, useTransition } from "react";
 
 import { Icon } from "@/components/icons";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -22,6 +23,7 @@ import {
   compactInput,
   compactTrigger,
 } from "@/features/club/components/record-parts";
+import { deleteLocationAction } from "@/features/club/services/delete-location";
 import type { LocationChange } from "@/features/club/services/location-state";
 import { saveLocationsAction } from "@/features/club/services/update-location";
 import type {
@@ -30,6 +32,33 @@ import type {
   LocationToggle,
 } from "@/features/club/types";
 import { cn } from "@/lib/utils";
+
+/**
+ * Everything hanging under `id`, nearest first.
+ *
+ * Only what the table was handed - the API deletes the real branch and says
+ * what it took, so this is for the warning, not for the work.
+ */
+function descendantsOf(
+  rows: readonly ClubLocation[],
+  id: string,
+): ClubLocation[] {
+  const found: ClubLocation[] = [];
+  const queue: string[] = [id];
+
+  for (let at = 0; at < queue.length; at += 1) {
+    const parent = queue[at];
+
+    for (const row of rows) {
+      if (row.parentLocation !== parent) continue;
+
+      found.push(row);
+      queue.push(row.id);
+    }
+  }
+
+  return found;
+}
 
 /** The on/off columns, in the order the table shows them. */
 const toggleColumns = [
@@ -97,6 +126,15 @@ export function ClubLocationsCard({
   const [renaming, setRenaming] = useState<string | null>(null);
 
   const [saving, startSaving] = useTransition();
+
+  /** The row whose delete was pressed, held until the question is answered. */
+  const [deleteTarget, setDeleteTarget] = useState<ClubLocation | null>(null);
+  const [deleting, startDeleting] = useTransition();
+
+  /** What goes with it, for the warning. Read from what's saved, not the edit. */
+  const deleteChildren = deleteTarget
+    ? descendantsOf(locations, deleteTarget.id)
+    : [];
 
   /** Branches folded away, by the id of the node that heads them. */
   const [folded, setFolded] = useState<readonly string[]>([]);
@@ -366,6 +404,49 @@ export function ClubLocationsCard({
     });
   }
 
+  /**
+   * Delete the row the dialog is asking about, and everything the API takes
+   * with it.
+   *
+   * The ids come back from the API rather than being worked out here: a
+   * descendant this table never loaded is gone just the same, and dropping
+   * only what we knew about would leave a row pointing at a parent that no
+   * longer exists.
+   */
+  function confirmDelete() {
+    const target = deleteTarget;
+    if (!target) return;
+
+    setFailure(undefined);
+
+    startDeleting(async () => {
+      const result = await deleteLocationAction({
+        locale,
+        clubId,
+        locationId: Number(target.id),
+      });
+
+      if (result.formError !== undefined) {
+        setFailure(result.formError);
+        setDeleteTarget(null);
+        return;
+      }
+
+      const gone = new Set(result.deletedIds ?? []);
+      const without = (list: ClubLocation[]) =>
+        list.filter((row) => !gone.has(row.id));
+
+      setLocations(without);
+      setRows(without);
+
+      // A row open for typing, or folded, may have just been deleted.
+      setRenaming((open) => (open !== null && gone.has(open) ? null : open));
+      setFolded((shut) => shut.filter((id) => !gone.has(id)));
+
+      setDeleteTarget(null);
+    });
+  }
+
   function update(id: string, patch: Partial<ClubLocation>) {
     if (!editing) begin();
 
@@ -439,7 +520,7 @@ export function ClubLocationsCard({
                   {/* Only while editing - there's nothing to act on in a
                       read-only table. */}
                   {editing ? (
-                    <Th className="w-16">{t("columns.actions")}</Th>
+                    <Th className="w-24">{t("columns.actions")}</Th>
                   ) : null}
                 </tr>
               </thead>
@@ -682,25 +763,40 @@ export function ClubLocationsCard({
 
                     {editing ? (
                       <Td>
-                        {/* Opens this row's name and code for typing. */}
-                        <button
-                          type="button"
-                          aria-label={t("editRow", { name: location.name })}
-                          aria-pressed={renaming === location.id}
-                          onClick={() =>
-                            setRenaming(
-                              renaming === location.id ? null : location.id,
-                            )
-                          }
-                          className={cn(
-                            "inline-flex size-7 items-center justify-center rounded-md transition-colors outline-none hover:bg-badge hover:text-ink focus-visible:ring-2 focus-visible:ring-ring/40",
-                            renaming === location.id
-                              ? "bg-badge text-ink"
-                              : "text-ink-muted",
-                          )}
-                        >
-                          <Icon name="edit" size="xs" />
-                        </button>
+                        <div className="flex items-center gap-1">
+                          {/* Opens this row's name and code for typing. */}
+                          <button
+                            type="button"
+                            aria-label={t("editRow", { name: location.name })}
+                            aria-pressed={renaming === location.id}
+                            onClick={() =>
+                              setRenaming(
+                                renaming === location.id ? null : location.id,
+                              )
+                            }
+                            className={cn(
+                              "inline-flex size-7 items-center justify-center rounded-md transition-colors outline-none hover:bg-badge hover:text-ink focus-visible:ring-2 focus-visible:ring-ring/40",
+                              renaming === location.id
+                                ? "bg-badge text-ink"
+                                : "text-ink-muted",
+                            )}
+                          >
+                            <Icon name="edit" size="xs" />
+                          </button>
+
+                          {/* Asks first, always - the API hard-deletes the
+                              whole branch and there is no undo. */}
+                          <button
+                            type="button"
+                            aria-label={t("delete.action", {
+                              name: location.name,
+                            })}
+                            onClick={() => setDeleteTarget(location)}
+                            className="inline-flex size-7 items-center justify-center rounded-md text-ink-muted transition-colors outline-none hover:bg-destructive/10 hover:text-destructive focus-visible:ring-2 focus-visible:ring-ring/40"
+                          >
+                            <Icon name="delete" size="xs" />
+                          </button>
+                        </div>
                       </Td>
                     ) : null}
                   </tr>
@@ -732,6 +828,48 @@ export function ClubLocationsCard({
             />
           ) : null}
         </>
+      ) : null}
+
+      {/*
+        Two questions, one dialog. A court with nothing under it is a single
+        row, and asking plainly is enough; a hall is itself and everything
+        inside it, and "delete Hafnia" reads like one row right up until
+        eleven disappear - so that version counts them and names them.
+
+        The names come from the rows this table holds, which is why the copy
+        says "and everything under it" rather than promising the count is the
+        whole story: a branch added in another tab is deleted too.
+      */}
+      {deleteTarget ? (
+        <ConfirmDialog
+          title={
+            deleteChildren.length > 0
+              ? t("delete.branchTitle", { name: deleteTarget.name })
+              : t("delete.leafTitle", { name: deleteTarget.name })
+          }
+          description={
+            deleteChildren.length > 0
+              ? t("delete.branchBody", { count: deleteChildren.length })
+              : t("delete.leafBody")
+          }
+          confirmLabel={t("delete.confirm")}
+          cancelLabel={tEditing("cancel")}
+          busy={deleting}
+          onConfirm={confirmDelete}
+          onCancel={() => setDeleteTarget(null)}
+        >
+          {deleteChildren.length > 0 ? (
+            // The names themselves, so it can be recognised rather than
+            // trusted. Capped and scrollable: a hall can hold dozens.
+            <ul className="max-h-40 overflow-y-auto rounded-lg border border-line bg-page px-3 py-2 text-[13px] text-body">
+              {deleteChildren.map((child) => (
+                <li key={child.id} className="truncate py-0.5">
+                  {child.show} · {child.name}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </ConfirmDialog>
       ) : null}
     </section>
   );

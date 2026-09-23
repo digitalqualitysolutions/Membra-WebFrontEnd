@@ -105,3 +105,23 @@ export type CreateLocationState = {
 };
 
 export const initialCreateLocationState: CreateLocationState = {};
+
+/** Which location to delete. Its descendants go with it; the API decides which. */
+export type DeleteLocationPayload = {
+  locale: string;
+  clubId: number;
+  locationId: number;
+};
+
+export type DeleteLocationState = {
+  /** Why it wasn't deleted, ready to show. */
+  formError?: string;
+  /**
+   * Every id the API removed, the target included - as strings, which is how
+   * the table keys its rows. Absent when nothing was deleted.
+   *
+   * Taken from the answer rather than worked out here: the card only knows the
+   * rows it was handed, and a branch it hasn't loaded still gets deleted.
+   */
+  deletedIds?: string[];
+};

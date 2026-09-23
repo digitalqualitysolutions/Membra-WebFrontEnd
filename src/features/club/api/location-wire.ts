@@ -103,6 +103,18 @@ export const locationsListResponseSchema = z.object({
   locations: z.array(locationResponseSchema),
 });
 
+/**
+ * What `DELETE /clubs/{clubId}/locations/{locationId}` answers with.
+ *
+ * Every id the delete took, the target included - the API removes a location
+ * and everything hanging off it in one go. Read rather than worked out here:
+ * the table only knows the rows it was given, and the API is the one that
+ * knows what the club actually holds.
+ */
+export const deleteLocationResponseSchema = z.object({
+  deletedIds: z.array(z.number().int()),
+});
+
 /* ------------------------------------------------------------------------ */
 /* Into the rows the tables draw                                             */
 /* ------------------------------------------------------------------------ */
