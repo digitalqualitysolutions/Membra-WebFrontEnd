@@ -10,7 +10,7 @@ import type { LocationRow, LocationSurface } from "@/features/location/types";
  * zone, Ryparken with its courts hanging straight off the hub. Same halls, same
  * `Bane` numbering, same `HH`/`RP` codes as `features/club/dummy-club.ts`, so
  * the two screens describe one club rather than two. What it adds is the three
- * columns only this screen shows - site number, surface, and group membership.
+ * columns only this screen shows - surface and group membership.
  */
 
 /** Hubs 0, zones 1, courts 2 - what the first column's guides are drawn from. */
@@ -72,7 +72,6 @@ function court(
     friends: false,
     active: true,
     directions: null,
-    site: null,
     surface: null,
     groups: groupsFor(prefix, number, total),
   };
@@ -113,18 +112,12 @@ function zone(
     friends: false,
     active: true,
     directions: null,
-    site: null,
     surface,
     groups: [],
   };
 }
 
-function hub(
-  id: string,
-  name: string,
-  short: string,
-  site: number,
-): LocationRow {
+function hub(id: string, name: string, short: string): LocationRow {
   return {
     id,
     name,
@@ -140,7 +133,6 @@ function hub(
     friends: false,
     active: true,
     directions: null,
-    site,
     surface: null,
     groups: [],
   };
@@ -159,7 +151,7 @@ function hub(
  * public timetable. It is here so the column has something to say.
  */
 export const dummyLocations: LocationRow[] = [
-  hub("hh", "Hafnia", "HH", 5),
+  hub("hh", "Hafnia", "HH"),
 
   zone("hh-i", "HH inde", "i", "HH.i", "HH", "indoor"),
   ...courts("i", "HH.i", 3, true),
@@ -167,7 +159,7 @@ export const dummyLocations: LocationRow[] = [
   zone("hh-u", "HH ude", "u", "HH.u", "HH", "outdoor"),
   ...courts("u", "HH.u", 3, false),
 
-  hub("rp", "Ryparken", "RP", 4),
+  hub("rp", "Ryparken", "RP"),
 
   // No zones at Ryparken: its courts hang straight off the hub.
   ...courts("RP", "RP", 9, true),

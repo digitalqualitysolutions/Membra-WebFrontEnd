@@ -20,10 +20,13 @@ import { cn } from "@/lib/utils";
 export function SiteHeader({
   locale,
   user = null,
+  signedIn = user !== null,
   photoUrl = null,
 }: {
   locale: Locale;
   user?: SessionUser | null;
+  /** Draw a member's header without their record - see `AppShell`. */
+  signedIn?: boolean;
   photoUrl?: string | null;
 }) {
   const t = useTranslations("header");
@@ -39,14 +42,14 @@ export function SiteHeader({
       <div
         className={cn(
           "flex h-16 items-center justify-between",
-          user ? "px-6" : "px-6 sm:px-8 lg:px-12",
+          signedIn ? "px-6" : "px-6 sm:px-8 lg:px-12",
         )}
       >
         {/* A member gets the control that shows and hides the navigation; the
             mark itself is at the head of that navigation. A visitor has no
             navigation, so the corner is the mark, and it leads home. */}
         <div className="flex items-center gap-3">
-          {user ? (
+          {signedIn ? (
             <SidebarToggle />
           ) : (
             <Link

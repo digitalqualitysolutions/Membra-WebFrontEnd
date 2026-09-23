@@ -25,7 +25,6 @@ export async function locationOverview(): Promise<Loaded<LocationRow[]>> {
   return loaded(
     locations.data.map((location) => ({
       ...location,
-      site: null,
       surface: null,
       groups: [],
     })),

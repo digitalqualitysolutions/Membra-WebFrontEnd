@@ -1,24 +1,27 @@
 import { getTranslations } from "next-intl/server";
 
+import { AppShell } from "@/components/layout/app-shell";
 import { LoadFailed } from "@/components/ui/load-failed";
 import type { Locale } from "@/config/locales";
 
 /**
  * A guarded page whose member couldn't be read.
  *
- * Without the shell, deliberately: the header greets the member by name and
- * draws their picture, and there's no member to draw. What's left is the one
- * thing worth offering - say what happened, and try again.
+ * Inside the shell, not instead of it. Whoever renders this is signed in - the
+ * session cookie is right there - so the navigation belongs on screen and
+ * every link in it still works. One call didn't answer; that costs the page
+ * its contents and the header its avatar, and nothing else. A card on a blank
+ * ground would take the whole app away over the same call.
  *
- * This is what a guarded page renders instead of throwing, so an API that
- * didn't answer costs a screen rather than the whole app.
+ * `signedIn` without a `user` is what says so: draw a member's frame, leave
+ * out the name and picture we haven't got.
  */
 export async function AccountUnavailable({ locale }: { locale: Locale }) {
   const t = await getTranslations({ locale });
 
   return (
-    <main className="flex min-h-dvh flex-col justify-center bg-page px-4 py-6 sm:px-6">
+    <AppShell locale={locale} signedIn>
       <LoadFailed title={t("errorPage.partAccount")} />
-    </main>
+    </AppShell>
   );
 }

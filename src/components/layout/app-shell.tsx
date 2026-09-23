@@ -27,12 +27,25 @@ import { cn } from "@/lib/utils";
 export async function AppShell({
   locale,
   user = null,
+  signedIn = user !== null,
   className,
   children,
 }: {
   locale: Locale;
   /** The signed-in member. `null` on the auth screens, where nobody is. */
   user?: SessionUser | null;
+  /**
+   * Whether to draw a member's frame - navigation and the sidebar toggle -
+   * when `user` is null.
+   *
+   * The two aren't the same question. A visitor has no member and no
+   * navigation. A member whose record didn't load has navigation, and every
+   * link in it still works; what's missing is their name and picture, so the
+   * account menu stays away and nothing else does. Without this, a failed
+   * session read handed a signed-in member the visitor's frame - which is to
+   * say, took the app away over one call.
+   */
+  signedIn?: boolean;
   /** Layout for the page area. Defaults to centred, as the auth cards want. */
   className?: string;
   children: ReactNode;
@@ -49,7 +62,7 @@ export async function AppShell({
    * and only for a member: the auth screens have no sidebar, and asking for a
    * cookie would opt them out of static rendering for an answer nothing uses.
    */
-  const remembered = user
+  const remembered = signedIn
     ? (await cookies()).get(SIDEBAR_COOKIE)?.value
     : undefined;
 
@@ -69,12 +82,17 @@ export async function AppShell({
    */
   const shell = (
     <div className="flex h-dvh overflow-hidden">
-      {user ? <AppSidebar locale={locale} /> : null}
+      {signedIn ? <AppSidebar locale={locale} /> : null}
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {/* The 96px variant: this is a 36px badge, which a sharp screen draws
             with ~72px of picture. The 32px one would look soft. */}
-        <SiteHeader locale={locale} user={user} photoUrl={avatars?.medium} />
+        <SiteHeader
+          locale={locale}
+          user={user}
+          signedIn={signedIn}
+          photoUrl={avatars?.medium}
+        />
 
         {/*
          * The column scrolls, not the page area inside it, so the footer
@@ -105,7 +123,7 @@ export async function AppShell({
 
   // The provider wraps the whole frame rather than the sidebar, because the
   // control that opens it lives in the header, outside it.
-  return user ? (
+  return signedIn ? (
     <SidebarProvider
       defaultOpen={sidebarOpen}
       remembered={remembered !== undefined}

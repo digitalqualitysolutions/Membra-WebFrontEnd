@@ -401,7 +401,6 @@ export const da: Dictionary = {
       memberBooking: "Medl. b.",
       memberBookingCount: "	# medl. b.",
       public: "Offentlig",
-      site: "Sted",
       groups: "Lokationsgrupper",
       active: "Aktiv",
     },

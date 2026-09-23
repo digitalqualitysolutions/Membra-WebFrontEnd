@@ -457,7 +457,6 @@ export const en = {
       memberBooking: "Mbr. b.",
       memberBookingCount: "	# mbr b.",
       public: "Public",
-      site: "Site",
       groups: "Location groups",
       active: "Active",
     },
@@ -611,7 +610,7 @@ export const en = {
     /** Names the part that failed, in the space that part would have filled. */
     partClub: "The club record couldn't be loaded",
     partLocations: "Locations couldn't be loaded",
-    /** The member themselves - so there's no header to show either. */
+    /** The member's own record: the page's contents and their avatar. */
     partAccount: "Your account couldn't be loaded",
     retry: "Try again",
   },

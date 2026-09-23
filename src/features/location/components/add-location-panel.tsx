@@ -32,6 +32,10 @@ const NONE = "none";
 /** The API's cap on a location's short code. */
 const SHORT_MAX = 8;
 
+/** The API's range for how many members a booking takes. Never zero. */
+const QUOTA_MIN = 1;
+const QUOTA_MAX = 30;
+
 /** Matches the compact sizing the record cards type into. */
 const compact = "h-9 px-3 text-[13px]";
 const compactTrigger = "h-9 px-3 text-[13px] data-[size=default]:h-9";
@@ -65,6 +69,22 @@ function apiId(id: string): number | null {
  * upwards, so the table shows what the API kept rather than what was typed -
  * `show` in particular is the API's to compose, not ours to predict.
  */
+/**
+ * The typed quota as a number the API will take: 1 to 30.
+ *
+ * Empty, zero or nonsense all read as 1. A booking needs at least the member
+ * making it, so 0 would describe one nobody is on - and the field is never
+ * blank to begin with, so an empty box means it was cleared mid-edit rather
+ * than that no quota was wanted.
+ */
+function toQuota(typed: string): number {
+  const asked = Number(typed);
+
+  if (!Number.isFinite(asked)) return QUOTA_MIN;
+
+  return Math.min(Math.max(Math.trunc(asked), QUOTA_MIN), QUOTA_MAX);
+}
+
 export function AddLocationPanel({
   clubId,
   addresses,
@@ -95,7 +115,9 @@ export function AddLocationPanel({
   const [site, setSite] = useState(NONE);
   const [parent, setParent] = useState(NONE);
   const [bookable, setBookable] = useState(true);
-  const [quota, setQuota] = useState("");
+  // One, not empty: a bookable location always takes at least one member, and
+  // zero would mean a booking nobody is on.
+  const [quota, setQuota] = useState("1");
   const [listed, setListed] = useState(false);
   const [active, setActive] = useState(true);
 
@@ -181,7 +203,7 @@ export function AddLocationPanel({
           // off for a location nobody has opened up. Sent rather than left out
           // so what is stored matches what the row said.
           canTeamBook: false,
-          memberReqToBook: bookable && quota ? Number(quota) : null,
+          memberReqToBook: bookable ? toQuota(quota) : null,
           public: listed,
           canFriendshipClubBook: false,
           active,
@@ -215,7 +237,6 @@ export function AddLocationPanel({
         friends: false,
         active,
         directions: null,
-        site: null,
         surface: null,
         // Groups are owned by their own screen; a new location joins none.
         groups: [],
@@ -324,12 +345,15 @@ export function AddLocationPanel({
               // The API's own range. Without the cap, a 40 here comes back as
               // a flat "something went wrong" from the schema rather than as
               // the number being out of range.
-              min={1}
-              max={30}
+              min={QUOTA_MIN}
+              max={QUOTA_MAX}
               value={quota}
               disabled={!bookable}
               onChange={(event) => setQuota(event.target.value)}
-              placeholder={t("none")}
+              // Cleared and left: put back what will actually be sent, rather
+              // than saving a 1 the empty box never showed.
+              onBlur={() => setQuota(String(toQuota(quota)))}
+              placeholder={String(QUOTA_MIN)}
               aria-label={t("toBook")}
             />
           </Field>

@@ -337,7 +337,6 @@ export function LocationsOverviewTable({
                 <Th className="w-20">{t("columns.memberBooking")}</Th>
                 <Th className="w-16">{t("columns.memberBookingCount")}</Th>
                 <Th className="w-20">{t("columns.public")}</Th>
-                <Th className="w-16">{t("columns.site")}</Th>
                 <Th className="w-72">{t("columns.groups")}</Th>
                 <Th className="w-20 pr-5 text-right sm:pr-6">
                   {t("columns.active")}
@@ -349,7 +348,7 @@ export function LocationsOverviewTable({
               {visible.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={9}
+                    colSpan={8}
                     className="py-10 text-center text-[13px] text-subtle"
                   >
                     {t("empty")}
@@ -477,16 +476,6 @@ export function LocationsOverviewTable({
                         on={location.publicListed}
                         label={location.publicListed ? yes : no}
                       />
-                    </Td>
-
-                    <Td>
-                      {location.site === null ? (
-                        <Dash label={t("none")} />
-                      ) : (
-                        <span className="text-[13px] font-medium text-ink">
-                          {location.site}
-                        </span>
-                      )}
                     </Td>
 
                     <Td>
