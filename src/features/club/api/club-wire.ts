@@ -20,12 +20,10 @@ import type { ClubAddress, ClubDetails } from "@/features/club/types";
 /* Reference data                                                            */
 /* ------------------------------------------------------------------------ */
 
-/** One row of `GET /clubs/activities`. */
+/** One row of `GET /reference/activities`. The name is `activity`, not `name`. */
 const activitySchema = z.object({
   id: z.number().int(),
-  name: z.string().min(1),
-  shortName: z.string(),
-  active: z.boolean(),
+  activity: z.string().min(1),
 });
 
 export const activitiesResponseSchema = z.object({
@@ -36,28 +34,23 @@ export const activitiesResponseSchema = z.object({
 export type ClubActivity = {
   id: number;
   name: string;
-  short: string;
 };
 
 /**
  * The activities worth offering.
  *
- * The endpoint is documented as returning active ones only, and the filter
- * stays anyway: `active` is on every row, and offering a retired activity in a
- * dropdown is the kind of thing nobody notices until a club is saved with it.
+ * Unfiltered: the row carries no `active` flag any more, so the endpoint's
+ * promise to send only live ones is the only guarantee there is.
  */
 export function toClubActivities(
   response: z.infer<typeof activitiesResponseSchema>,
 ): ClubActivity[] {
-  return response.activities
-    .filter((row) => row.active)
-    .map((row) => ({ id: row.id, name: row.name, short: row.shortName }));
+  return response.activities.map((row) => ({ id: row.id, name: row.activity }));
 }
 
-/** One row of `GET /clubs/languages`. */
+/** One row of `GET /clubs/languages`. The id is a code - `da`, `en-US`. */
 const languageSchema = z.object({
-  id: z.number().int(),
-  code: z.string(),
+  id: z.string().min(1),
   name: z.string().min(1),
   active: z.boolean(),
 });
@@ -68,18 +61,17 @@ export const languagesResponseSchema = z.object({
 
 /** A language a club can list, in the names the app uses. */
 export type ClubLanguageOption = {
-  id: number;
-  code: string;
+  id: string;
   name: string;
 };
 
-/** Active ones only, for the same reason as the activities. */
+/** Active ones only: offering a retired language would be refused on save. */
 export function toClubLanguages(
   response: z.infer<typeof languagesResponseSchema>,
 ): ClubLanguageOption[] {
   return response.languages
     .filter((row) => row.active)
-    .map((row) => ({ id: row.id, code: row.code, name: row.name }));
+    .map((row) => ({ id: row.id, name: row.name }));
 }
 
 /* ------------------------------------------------------------------------ */
@@ -116,12 +108,12 @@ export const clubResponseSchema = z.object({
   active: z.boolean(),
   countryCode: z.string(),
   activities: z.array(
-    z.object({ id: z.number().int(), name: z.string(), shortName: z.string() }),
+    z.object({ id: z.number().int(), activity: z.string() }),
   ),
   languages: z.array(
     z.object({
-      languageId: z.number().int(),
-      code: z.string(),
+      /** A code, not a number: `da`, `en-US`. */
+      languageId: z.string(),
       name: z.string(),
       rank: z.number().int(),
     }),
@@ -216,7 +208,7 @@ export function toClubDetails(
     admins: club.adminCount,
     recommendedAdmins: RECOMMENDED_ADMINS,
     active: club.active,
-    activity: club.activities.map((activity) => activity.name).join(", "),
+    activity: club.activities.map((entry) => entry.activity).join(", "),
     activityIds: club.activities.map((activity) => activity.id),
     languages: languages.map((language, index) => ({
       id: language.languageId,
@@ -273,7 +265,7 @@ export const createClubRequestSchema = z.object({
   languages: z
     .array(
       z.object({
-        languageId: z.number().int().positive(),
+        languageId: z.string().min(1).max(15),
         rank: z.number().int().positive(),
       }),
     )
@@ -359,8 +351,8 @@ export type AddAddressRequest = z.infer<typeof addAddressRequestSchema>;
  * say nothing new.
  */
 export function toLanguageRanks(
-  primaryId: number,
-  secondaryId: number | null,
+  primaryId: string,
+  secondaryId: string | null,
 ): CreateClubRequest["languages"] {
   return [
     { languageId: primaryId, rank: 1 },

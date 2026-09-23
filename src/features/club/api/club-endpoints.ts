@@ -67,7 +67,8 @@ export const segment = (id: number) => encodeURIComponent(String(id));
 export const listActivities = cache(async function listActivities(
   sessionToken: string,
 ): Promise<ClubActivity[]> {
-  const { data } = await api(activitiesResponseSchema, "/clubs/activities", {
+  // Under `/reference`, not `/clubs`: it's a catalogue, not a club's own data.
+  const { data } = await api(activitiesResponseSchema, "/reference/activities", {
     headers: withSession(sessionToken),
   });
 

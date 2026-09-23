@@ -270,8 +270,11 @@ export function CardHeader({
   );
 }
 
-/** What a `Select` holds for "no language": Radix won't take an empty value. */
-const NO_LANGUAGE = "none";
+/**
+ * What a `Select` holds for "no language": Radix won't take an empty value.
+ * Underscored so it can't collide with a real language code.
+ */
+const NO_LANGUAGE = "__none__";
 
 /**
  * One of the club's language slots, picked from the API's list.
@@ -291,25 +294,23 @@ export function LanguageSelect({
   noneLabel,
   exclude = null,
 }: {
-  value: number | null;
-  onChange: (value: number | null) => void;
+  value: string | null;
+  onChange: (value: string | null) => void;
   languages: readonly ClubLanguageOption[];
   label: string;
   placeholder: string;
   unavailableLabel: string;
   /** Given for an optional slot, which can then be set back to nothing. */
   noneLabel?: string;
-  exclude?: number | null;
+  exclude?: string | null;
 }) {
   const unavailable = languages.length === 0;
   const offered = languages.filter((language) => language.id !== exclude);
 
   return (
     <Select
-      value={value === null ? (noneLabel ? NO_LANGUAGE : "") : String(value)}
-      onValueChange={(next) =>
-        onChange(next === NO_LANGUAGE ? null : Number(next))
-      }
+      value={value === null ? (noneLabel ? NO_LANGUAGE : "") : value}
+      onValueChange={(next) => onChange(next === NO_LANGUAGE ? null : next)}
       disabled={unavailable}
     >
       <SelectTrigger
@@ -327,7 +328,7 @@ export function LanguageSelect({
         ) : null}
 
         {offered.map((language) => (
-          <SelectItem key={language.id} value={String(language.id)}>
+          <SelectItem key={language.id} value={language.id}>
             {language.name}
           </SelectItem>
         ))}

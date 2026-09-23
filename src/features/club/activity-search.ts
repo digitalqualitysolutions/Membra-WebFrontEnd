@@ -12,7 +12,7 @@ function fold(text: string) {
 }
 
 /**
- * The activities a search matches, by name or short code.
+ * The activities a search matches, by name.
  *
  * With nothing typed it's every activity, the chosen ones first, so what an
  * admin already picked is on screen without paging through the catalogue.
@@ -32,9 +32,5 @@ export function matchActivities(
     ];
   }
 
-  return activities.filter(
-    (activity) =>
-      fold(activity.name).includes(needle) ||
-      fold(activity.short).includes(needle),
-  );
+  return activities.filter((activity) => fold(activity.name).includes(needle));
 }

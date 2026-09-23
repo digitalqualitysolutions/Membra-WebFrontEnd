@@ -98,8 +98,8 @@ export function ClubSetup({
   const [established, setEstablished] = useState("");
   // None chosen to start. Optional: a club can be created without any.
   const [activityIds, setActivityIds] = useState<number[]>([]);
-  const [primaryLanguage, setPrimaryLanguage] = useState<number | null>(null);
-  const [secondaryLanguage, setSecondaryLanguage] = useState<number | null>(
+  const [primaryLanguage, setPrimaryLanguage] = useState<string | null>(null);
+  const [secondaryLanguage, setSecondaryLanguage] = useState<string | null>(
     null,
   );
   const [avatar, setAvatar] = useState<string | null>(null);

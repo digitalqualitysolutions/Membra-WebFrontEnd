@@ -144,7 +144,7 @@ const safeUserSchema = z.object({
  * Either half can be null, so a number is only a number once it has digits.
  */
 const phoneSchema = z.object({
-  countryCode: z.number().int().nullable(),
+  phoneCountryCode: z.number().int().nullable(),
   phoneNumber: z.string().nullable(),
 });
 
@@ -215,7 +215,7 @@ export function toSessionUser(
     // No digits, no number - even if a calling code came back on its own.
     primaryPhone: response.primaryPhone?.phoneNumber
       ? {
-          countryCode: response.primaryPhone.countryCode,
+          countryCode: response.primaryPhone.phoneCountryCode,
           phoneNumber: response.primaryPhone.phoneNumber,
         }
       : null,

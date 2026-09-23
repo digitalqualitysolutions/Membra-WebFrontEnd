@@ -259,12 +259,6 @@ export function ActivityPicker({
                 </span>
 
                 <span className="min-w-0 flex-1 truncate">{activity.name}</span>
-
-                {activity.short ? (
-                  <span className="shrink-0 text-[11px] text-body">
-                    {activity.short}
-                  </span>
-                ) : null}
               </li>
             );
           })}
