@@ -38,7 +38,6 @@ export function ClubScreen({
   club: saved,
   activities,
   languages,
-  countries,
   contacts,
   locations,
 }: {
@@ -46,7 +45,6 @@ export function ClubScreen({
   club: Loaded<ClubDetails | null>;
   activities: readonly ClubActivity[];
   languages: readonly ClubLanguageOption[];
-  countries: readonly { code: string; name: string }[];
   contacts: ClubContact[];
   locations: Loaded<ClubLocation[]>;
 }) {
@@ -98,7 +96,6 @@ export function ClubScreen({
         <ClubSetup
           activities={activities}
           languages={languages}
-          countries={countries}
           onCreate={created}
         />
       </div>
@@ -134,7 +131,6 @@ export function ClubScreen({
           club={club}
           activities={activities}
           languages={languages}
-          countries={countries}
           onSaved={setClub}
         />
 

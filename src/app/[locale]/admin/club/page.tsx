@@ -10,7 +10,6 @@ import { ClubScreen } from "@/features/club/components/club-screen";
 import {
   clubActivities,
   clubContacts,
-  clubCountries,
   clubDetails,
   clubLanguages,
   clubLocations,
@@ -53,12 +52,11 @@ export default async function Club({
 
   const user = session.data;
 
-  const [club, activities, languages, countries, contacts, locations] =
+  const [club, activities, languages, contacts, locations] =
     await Promise.all([
       clubDetails(),
       clubActivities(),
       clubLanguages(),
-      clubCountries(),
       clubContacts(),
       clubLocations(),
     ]);
@@ -84,7 +82,6 @@ export default async function Club({
           club={club}
           activities={activities}
           languages={languages}
-          countries={countries}
           contacts={contacts}
           locations={locations}
         />

@@ -106,7 +106,6 @@ export const clubResponseSchema = z.object({
   shortName: z.string(),
   establishedDate: z.string().nullable(),
   active: z.boolean(),
-  countryCode: z.string(),
   activities: z.array(
     z.object({ id: z.number().int(), activity: z.string() }),
   ),
@@ -185,16 +184,8 @@ export function toClubAddress(address: ClubAddressResponse): ClubAddress {
  */
 const RECOMMENDED_ADMINS = 3;
 
-/**
- * The API's club, in the shape the club screen reads.
- *
- * @param countryName how a country code reads to this member - the API only
- *   sends the code, and the name depends on the page's language.
- */
-export function toClubDetails(
-  club: ClubResponse,
-  countryName: (code: string) => string,
-): ClubDetails {
+/** The API's club, in the shape the club screen reads. */
+export function toClubDetails(club: ClubResponse): ClubDetails {
   // Rank 1 is the primary language; everything after it is secondary. Sorted
   // first, because nothing promises the API lists them in rank order.
   const languages = [...club.languages].sort((a, b) => a.rank - b.rank);
@@ -215,7 +206,6 @@ export function toClubDetails(
       name: language.name,
       rank: index === 0 ? "primary" : "secondary",
     })),
-    country: { code: club.countryCode, name: countryName(club.countryCode) },
     addresses: club.addresses.map(toClubAddress),
     /*
      * Whichever of the two the API sent - see the note on the schema. The
@@ -259,7 +249,6 @@ export const createClubRequestSchema = z.object({
   name: z.string().min(1).max(255),
   shortName: z.string().min(1).max(10),
   establishedDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  countryCode: z.string().regex(/^[A-Z]{2}$/),
   activityIds: z.array(z.number().int().positive()),
   /** Rank 1 is primary. Ranks must be unique per club. */
   languages: z
@@ -292,7 +281,6 @@ export function toCreateClubForm(
   form.set("name", request.name);
   form.set("shortName", request.shortName);
   form.set("establishedDate", request.establishedDate);
-  form.set("countryCode", request.countryCode);
   form.set("active", "true");
   form.set("activityIds", JSON.stringify(request.activityIds));
   form.set("languages", JSON.stringify(request.languages));
@@ -322,7 +310,6 @@ export const updateClubRequestSchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/)
     .nullable(),
   active: z.boolean(),
-  countryCode: z.string().regex(/^[A-Z]{2}$/),
   activityIds: z.array(z.number().int().positive()),
   languages: createClubRequestSchema.shape.languages,
 });

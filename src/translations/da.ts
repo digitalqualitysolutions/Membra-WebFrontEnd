@@ -193,7 +193,7 @@ export const da: Dictionary = {
     setup: {
       intro: {
         title: "Opret din klub",
-        body: "Tilføj klubbens navn, land og sprog samt de adresser, hvor den spiller. Medlemmer, hold og lokationer bygger alle oven på dette.",
+        body: "Tilføj klubbens navn og sprog samt de adresser, hvor den spiller. Medlemmer, hold og lokationer bygger alle oven på dette.",
         start: "Tilføj klub",
       },
 
@@ -268,7 +268,6 @@ export const da: Dictionary = {
       secondary: "Sekundær",
       datePlaceholder: "DD / MM / ÅÅÅÅ",
       datePicker: "Åbn kalender",
-      country: "Land",
       avatar: "Klubbens logo",
       upload: "Upload",
       uploadFormats: "JPG, PNG, HEIC, WebP eller AVIF · Maks. 8 MB",

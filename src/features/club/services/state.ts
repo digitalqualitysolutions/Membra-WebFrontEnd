@@ -32,7 +32,6 @@ export type CreateClubPayload = {
   locale: string;
   name: string;
   shortName: string;
-  countryCode: string;
   /** Day-first `DD / MM / YYYY`, as the field holds it. */
   establishedDate: string;
   activityIds: number[];
@@ -61,7 +60,6 @@ export const initialCreateClubState: CreateClubState = {};
 export type ClubDetailsChange = {
   name?: string;
   shortName?: string;
-  countryCode?: string;
   /** Day-first `DD / MM / YYYY`, as the field holds it. */
   establishedDate?: string;
   active?: boolean;
