@@ -3,7 +3,8 @@ import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 
 import { isLocale } from "@/config/locales";
-import { requireSession } from "@/features/auth/server/session";
+import { AccountUnavailable } from "@/components/layout/account-unavailable";
+import { loadSession } from "@/features/auth/server/session";
 import { AuthCard } from "@/features/auth/components/auth-card";
 import { ConsentBadge } from "@/features/auth/components/consent-badge";
 import { PhotoPicker } from "@/features/onboarding/components/photo-picker";
@@ -31,7 +32,8 @@ export default async function OnboardingPhoto({
 
   // Guard lives on the page, not the layout. Layouts don't re-render between
   // navigations, so a check up there quietly stops running.
-  await requireSession(locale);
+  const session = await loadSession(locale);
+  if (!session.ok) return <AccountUnavailable locale={locale} />;
 
   const t = await getTranslations("onboarding");
 

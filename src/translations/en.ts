@@ -599,21 +599,21 @@ export const en = {
     unexpected: "Something went wrong. Please try again.",
   },
 
-  /** Whole-page failures: an error boundary and a 404, not a form message. */
+  /**
+   * A part of a screen that couldn't be read, shown where that part would
+   * have been. Not a form message, and no longer a whole-page one either -
+   * pages handle their own failures rather than handing them to a boundary.
+   */
   errorPage: {
-    title: "Something went wrong",
-    description:
-      "This page could not be loaded. Trying again often works; if it does not, come back in a moment.",
-    /** Under one card that failed while the rest of the page rendered. */
+    /** Under one part that failed while the rest of the page rendered. */
     partDescription:
       "Trying again often works; the rest of this page is unaffected.",
     /** Names the part that failed, in the space that part would have filled. */
     partClub: "The club record couldn't be loaded",
     partLocations: "Locations couldn't be loaded",
+    /** The member themselves - so there's no header to show either. */
+    partAccount: "Your account couldn't be loaded",
     retry: "Try again",
-    backToLogin: "Back to log in",
-    /** Label for the `digest` React attaches to a server error. */
-    reference: "Reference",
   },
 
   notFound: {

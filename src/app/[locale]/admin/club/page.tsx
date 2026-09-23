@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 
+import { AccountUnavailable } from "@/components/layout/account-unavailable";
 import { AppShell } from "@/components/layout/app-shell";
 import { isLocale } from "@/config/locales";
-import { requireSession } from "@/features/auth/server/session";
+import { loadSession } from "@/features/auth/server/session";
 import { ClubScreen } from "@/features/club/components/club-screen";
 import {
   clubActivities,
@@ -47,7 +48,10 @@ export default async function Club({
 
   // Guard on the page, not the layout. Layouts don't re-render between
   // navigations, so a check up there quietly stops running.
-  const user = await requireSession(locale);
+  const session = await loadSession(locale);
+  if (!session.ok) return <AccountUnavailable locale={locale} />;
+
+  const user = session.data;
 
   const [club, activities, languages, countries, contacts, locations] =
     await Promise.all([

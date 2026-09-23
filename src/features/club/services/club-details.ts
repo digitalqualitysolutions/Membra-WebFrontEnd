@@ -40,20 +40,33 @@ import { loaded, LOAD_FAILED, type Loaded } from "@/lib/loaded";
  * first one is the club this screen shows. The screen manages one club; a
  * member who runs several sees the first by name until it offers a choice.
  *
- * An empty list, or a club that's gone (404), really is "no club", and the
- * setup screen is the right answer. Anything else reads as a failure rather
- * than as an absence - answering `null` there would offer to create a club the
- * admin already has. Nothing throws: a failure costs this screen its cards,
- * not the whole page.
+ * Two calls, two `catch`es, because a 404 means opposite things in each. The
+ * list is the careful one: `GET /clubs` answers 200 with an empty array for a
+ * member who runs none, and its spec has no 404 at all - so a 404 there is
+ * something upstream going wrong, and reading it as "no club" is what put the
+ * "create your club" card in front of an admin who already has one. Only
+ * `GET /clubs/{id}` documents a 404, and there it really does mean gone.
+ *
+ * Nothing throws: a failure costs this screen its cards, not the whole page.
  */
 export async function clubDetails(): Promise<Loaded<ClubDetails | null>> {
   const token = await readSessionToken();
   if (!token) return loaded(null);
 
-  try {
-    const [clubId] = await listMyClubIds(token);
-    if (clubId === undefined) return loaded(null);
+  let clubId: number | undefined;
 
+  try {
+    [clubId] = await listMyClubIds(token);
+  } catch (error) {
+    console.error("[club] could not list the member's clubs", error);
+
+    return LOAD_FAILED;
+  }
+
+  // An empty list is the real "no club", and the setup screen answers it.
+  if (clubId === undefined) return loaded(null);
+
+  try {
     const [club, locale] = await Promise.all([
       getClub(clubId, token),
       getLocale(),
@@ -61,6 +74,7 @@ export async function clubDetails(): Promise<Loaded<ClubDetails | null>> {
 
     return loaded(toClubDetails(club, (code) => countryName(code, locale)));
   } catch (error) {
+    // Documented here, and it means the club is gone rather than never was.
     if (ApiError.isApiError(error) && error.status === 404) return loaded(null);
 
     console.error("[club] could not be loaded", error);
@@ -98,10 +112,22 @@ export async function clubLocations(): Promise<Loaded<ClubLocation[]>> {
   const token = await readSessionToken();
   if (!token) return loaded([]);
 
-  try {
-    const [clubId] = await listMyClubIds(token);
-    if (clubId === undefined) return loaded([]);
+  let clubId: number | undefined;
 
+  try {
+    [clubId] = await listMyClubIds(token);
+  } catch (error) {
+    // Same reading as `clubDetails`: no documented 404 on `GET /clubs`, so a
+    // failure here is a failure, not an empty estate.
+    console.error("[locations] could not list the member's clubs", error);
+
+    return LOAD_FAILED;
+  }
+
+  // No club, so no locations - and nothing failed.
+  if (clubId === undefined) return loaded([]);
+
+  try {
     const [club, rows] = await Promise.all([
       getClub(clubId, token),
       listLocations(clubId, token),
@@ -117,9 +143,8 @@ export async function clubLocations(): Promise<Loaded<ClubLocation[]>> {
       ),
     );
   } catch (error) {
-    // A club that isn't there has no locations - the same reading `clubDetails`
-    // gives a 404, and the two have to agree. Answering "couldn't be loaded"
-    // here told an admin with no club yet that the API was broken.
+    // A club that's gone has no locations, which is the same reading
+    // `clubDetails` gives a 404 from these two endpoints.
     if (ApiError.isApiError(error) && error.status === 404) return loaded([]);
 
     console.error("[locations] could not be loaded", error);

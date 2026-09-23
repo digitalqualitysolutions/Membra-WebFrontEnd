@@ -530,16 +530,12 @@ export const da: Dictionary = {
   },
 
   errorPage: {
-    title: "Noget gik galt",
-    description:
-      "Denne side kunne ikke indlæses. Det hjælper som regel at prøve igen; ellers så vend tilbage om lidt.",
     partDescription:
       "Det hjælper som regel at prøve igen; resten af siden er upåvirket.",
     partClub: "Klubbens oplysninger kunne ikke indlæses",
     partLocations: "Lokationer kunne ikke indlæses",
+    partAccount: "Din konto kunne ikke indlæses",
     retry: "Prøv igen",
-    backToLogin: "Tilbage til log ind",
-    reference: "Reference",
   },
 
   notFound: {

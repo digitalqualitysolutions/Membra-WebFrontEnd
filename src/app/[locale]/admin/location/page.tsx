@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 
+import { AccountUnavailable } from "@/components/layout/account-unavailable";
 import { AppShell } from "@/components/layout/app-shell";
 import { LoadFailed } from "@/components/ui/load-failed";
 import { isLocale } from "@/config/locales";
-import { requireSession } from "@/features/auth/server/session";
+import { loadSession } from "@/features/auth/server/session";
 import { clubDetails } from "@/features/club/services/club-details";
 import { LocationsOverviewTable } from "@/features/location/components/locations-overview-table";
 import { locationOverview } from "@/features/location/services/location-overview";
@@ -42,7 +43,10 @@ export default async function Location({
 
   // Guard on the page, not the layout. Layouts don't re-render between
   // navigations, so a check up there quietly stops running.
-  const user = await requireSession(locale);
+  const session = await loadSession(locale);
+  if (!session.ok) return <AccountUnavailable locale={locale} />;
+
+  const user = session.data;
   const t = await getTranslations({ locale });
 
   // The club's own addresses go along: a hub is parented to one of them, so
