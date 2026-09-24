@@ -184,6 +184,18 @@ export function ClubDetailsCard({
         ? fieldValid[mode.field]
         : true;
 
+  /**
+   * Whether anything has actually moved since the pencil opened.
+   *
+   * Against `valuesOf(club)` rather than a snapshot taken when the edit began:
+   * both sides are built by the same function, so they can only differ where
+   * something was typed. The picked logo counts on its own - it never reaches
+   * `values` as anything the saved record could be compared with.
+   */
+  const dirty =
+    JSON.stringify(values) !== JSON.stringify(valuesOf(club)) ||
+    avatarFile !== null;
+
   const details = detailsChange();
 
   /**
@@ -544,6 +556,7 @@ export function ClubDetailsCard({
           onSave={save}
           pending={saving}
           error={saveError}
+          dirty={dirty}
           saveDisabled={!ready}
         />
       )}

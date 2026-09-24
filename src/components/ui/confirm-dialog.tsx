@@ -63,20 +63,29 @@ export function ConfirmDialog({
       }}
     >
       <DialogContent>
-        <div className="flex items-start gap-3">
+        {/*
+          Stacked rather than side by side: the mark is what the dialog leads
+          with, and beside a two-line question it sat against neither line.
+
+          The mark and the question centre; the explanation underneath doesn't.
+          It runs to two or three lines, and centred prose is read a line at a
+          time with the eye hunting for each new start.
+        */}
+        <div className="flex flex-col gap-3">
           <span
             className={
               danger
-                ? "mt-0.5 inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-destructive/10 text-destructive"
-                : "mt-0.5 inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-badge text-body"
+                ? "flex justify-center text-destructive"
+                : "flex justify-center text-body"
             }
           >
-            <Icon name="warning" size="xs" />
+            <Icon name="warning" size="xl" />
           </span>
 
-          <div className="min-w-0 flex-1">
-            <DialogTitle>{title}</DialogTitle>
-            <DialogDescription className="mt-1.5">
+          <div className="min-w-0">
+            <DialogTitle className="text-center">{title}</DialogTitle>
+
+            <DialogDescription className="mt-2">
               {description}
             </DialogDescription>
           </div>

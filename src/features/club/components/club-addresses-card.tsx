@@ -218,12 +218,35 @@ export function ClubAddressesCard({
     addRow();
   }
 
+  /**
+   * Take back a row that was only ever being added.
+   *
+   * Ends the edit when that leaves nothing changed: the member got in here by
+   * pressing Add address, so the cross that undoes it should put the card back
+   * as it found it rather than leave a save bar over an untouched table. An
+   * edit holding other changes carries on - those aren't the cross's to throw
+   * away - and so does one whose leader had to move, which is a change of its
+   * own.
+   */
   function removeNewRow(key: string) {
-    setNewRows((rows) => rows.filter((row) => row.key !== key));
+    const rest = newRows.filter((row) => row.key !== key);
 
     // The row that led is gone: the first stored address takes it back.
-    if (primary === key)
-      setPrimary(primaryIdOf(club) ?? club.addresses[0]?.id ?? null);
+    const leader =
+      primary === key
+        ? (primaryIdOf(club) ?? club.addresses[0]?.id ?? null)
+        : primary;
+
+    setNewRows(rest);
+    if (leader !== primary) setPrimary(leader);
+
+    const storedChanged = addressChanges.some(
+      (change) => change.addressId !== null,
+    );
+
+    if (rest.length === 0 && !storedChanged && leader === primaryIdOf(club)) {
+      cancel();
+    }
   }
 
   function updateRow(key: string, patch: Partial<NewAddressValues>) {
@@ -279,6 +302,15 @@ export function ClubAddressesCard({
   ];
 
   const primaryChanged = editing && primary !== primaryIdOf(club);
+
+  /**
+   * Whether anything has actually moved.
+   *
+   * The same test `save` makes before deciding it has nothing to send:
+   * `addressChanges` already leaves out a row whose pencil opened and closed
+   * without a keystroke, so an opened row isn't a changed one.
+   */
+  const dirty = addressChanges.length > 0 || primaryChanged;
 
   const ready =
     Object.values(edits).every(isAddressComplete) &&
@@ -419,6 +451,7 @@ export function ClubAddressesCard({
           onSave={save}
           pending={saving}
           error={saveError}
+          dirty={dirty}
           saveDisabled={!ready}
         />
       ) : null}

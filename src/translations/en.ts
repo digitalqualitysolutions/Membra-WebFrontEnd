@@ -427,10 +427,11 @@ export const en = {
         /** The bin on a row, read out on its own with nothing around it. */
         action: "Delete {name}",
         leafTitle: "Delete {name}?",
-        leafBody: "This location will be removed for good. This can't be undone.",
+        leafBody:
+          "Are you sure you want to delete this location? This action is permanent and cannot be undone.",
         branchTitle: "Delete {name} and everything inside it?",
         branchBody:
-          "{count, plural, one {# location inside it will be deleted too} other {# locations inside it will be deleted too}}. This can't be undone.",
+          "{count, plural, one {# location inside it will be deleted too} other {# locations inside it will be deleted too}}. This action is permanent and cannot be undone.",
         confirm: "Delete",
       },
     },
@@ -554,6 +555,124 @@ export const en = {
         groups:
           "Can be needed to assign a group of locations to a team. E.g. if a team is playing on 1 and 2 out of 5 available courts in a sports hall a group of “C1-2” is needed. Location groups are managed in Admin/Location groups and is only shown here for info.",
       },
+    },
+  },
+
+  /** The club's operational year, as a list of dated runs. */
+  season: {
+    metaTitle: "Seasons",
+    title: "Seasons",
+    description:
+      "Manage operational seasons, start and end dates, team registrations, court allocations, and active status.",
+
+    /** The strip above the table: which season the club is in right now. */
+    note: {
+      title: "Active season schedule",
+      current: "Current active: {name}",
+      /** Every season is either switched off or out of date today. */
+      none: "No season is running today",
+      body: "Changes to season start and end dates directly affect recurring court bookings, match schedules, and roster sign-ups.",
+    },
+
+    card: {
+      title: "Seasons",
+      editAll: "Edit seasons",
+      count:
+        "{count, plural, one {# season configured} other {# seasons configured}}",
+      filter: "Filter by season, code…",
+      add: "Add season",
+      empty: "No seasons match that filter.",
+      /** In the save bar, before and after something has actually moved. */
+      editing: "All changes are validated as you make them.",
+      unsaved: "Unsaved changes. Save to apply them to bookings.",
+      cancel: "Cancel",
+      save: "Save",
+    },
+
+    /** The panel a season is created from, before there is a table. */
+    form: {
+      title: "Add season",
+      close: "Close add season",
+      save: "Save",
+    },
+
+    /** The first view, before the club has set any seasons up. */
+    emptyState: {
+      title: "Add your first season",
+      body: "Seasons are the dated runs your club operates in - a summer, a winter, a cup. Teams register against them, and courts are allocated for them.",
+      add: "Add season",
+    },
+
+    columns: {
+      season: "Season",
+      short: "Short",
+      start: "Start",
+      end: "End",
+      teams: "Teams",
+      locations: "Locations",
+      active: "Active",
+      actions: "Actions",
+    },
+
+    row: {
+      edit: "Edit {name}",
+      delete: "Delete {name}",
+      /** A row added in this edit and never saved: dropped, not deleted. */
+      removeNew: "Remove this new season",
+      /** What a just-added row is called until it's given a name. */
+      newName: "New season",
+
+      /** Every field a row opens for typing says what belongs in it. */
+      namePlaceholder: "e.g. Summer 26",
+      shortPlaceholder: "e.g. s26",
+      datePlaceholder: "DD / MM / YYYY",
+      datePicker: "Open calendar",
+    },
+
+    /** The glossary under the table, folded away until it's asked for. */
+    help: {
+      title: "Help",
+      description: "What a season is, and what each column means.",
+      intro:
+        "A season is the dated run your club operates in - a summer, a winter, a cup. Teams register against one, courts are allocated for one, and recurring bookings and match schedules follow its start and end dates.",
+      pairRule:
+        "Every season is registered for by teams, allocated to locations, or both. Switching one off turns the other on: a season that is neither has nothing to attach to.",
+
+      terms: {
+        season: "Season",
+        short: "Short",
+        start: "Start",
+        end: "End",
+        teams: "Teams",
+        locations: "Locations",
+        active: "Active",
+      },
+
+      defs: {
+        season:
+          "What the club calls this run - “Summer 26”, “Winter 26/27”. Names don't have to be unique, but members read this one on every schedule, so a year in it helps.",
+        short:
+          "The code a schedule, a booking or an export writes instead of the full name - “s26”, “w26HH.i”. Two seasons can't share one.",
+        start:
+          "The first day the season covers. Moving it moves the recurring court bookings and match schedules that hang off it.",
+        end: "The last day the season covers. A season that ends before it starts can't be saved.",
+        teams:
+          "Teams register for this season, and it shows up in team planning and roster sign-ups.",
+        locations:
+          "Courts and facilities are allocated for this season, and it shows up in location schedules.",
+        active:
+          "Whether the season is in use at all. An inactive season keeps its dates and its settings but takes no registrations and allocates nothing.",
+      },
+    },
+
+    /** Why the save bar won't let this go through yet. */
+    invalid: {
+      nameRequired: "Every season needs a name.",
+      shortRequired: "Every season needs a short code.",
+      shortTaken: "“{short}” is already used by another season. Pick another.",
+      startInvalid: "{name} needs a start date, as DD / MM / YYYY.",
+      endInvalid: "{name} needs an end date, as DD / MM / YYYY.",
+      endBeforeStart: "{name} ends before it starts.",
     },
   },
 
