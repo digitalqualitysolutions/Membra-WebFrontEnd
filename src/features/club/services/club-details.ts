@@ -48,7 +48,11 @@ import { loaded, LOAD_FAILED, type Loaded } from "@/lib/loaded";
  */
 export async function clubDetails(): Promise<Loaded<ClubDetails | null>> {
   const token = await readSessionToken();
-  if (!token) return loaded(null);
+
+  // Not `loaded(null)`: "nobody is signed in" is not "this admin has no club",
+  // and answering the second question with the first puts the setup card in
+  // front of someone whose session simply wasn't read.
+  if (!token) return LOAD_FAILED;
 
   let clubId: number | undefined;
 
@@ -66,9 +70,20 @@ export async function clubDetails(): Promise<Loaded<ClubDetails | null>> {
   try {
     return loaded(toClubDetails(await getClub(clubId, token)));
   } catch (error) {
-    // Documented here, and it means the club is gone rather than never was.
-    if (ApiError.isApiError(error) && error.status === 404) return loaded(null);
-
+    /*
+     * Every failure here is a failure, a 404 included.
+     *
+     * A 404 does document "the club is gone" - but `GET /clubs` named this id
+     * a moment ago, so a 404 now contradicts it, and the two readings are
+     * indistinguishable from out here. One of them is far more expensive to
+     * get wrong: "gone" shows the setup card to an admin who has a club, and
+     * the button on it creates them a second one. A flaky read costs a
+     * refresh; a duplicate club is theirs to live with.
+     *
+     * A club that really was deleted still resolves on the next request -
+     * `GET /clubs` comes back empty and the setup card arrives from there,
+     * which is the path that actually knows the answer.
+     */
     console.error("[club] could not be loaded", error);
 
     return LOAD_FAILED;
@@ -102,7 +117,10 @@ export async function clubContacts(): Promise<ClubContact[]> {
  */
 export async function clubLocations(): Promise<Loaded<ClubLocation[]>> {
   const token = await readSessionToken();
-  if (!token) return loaded([]);
+
+  // A session that couldn't be read is a failure, not an empty estate - an
+  // empty table invites someone to re-create rows that already exist.
+  if (!token) return LOAD_FAILED;
 
   let clubId: number | undefined;
 

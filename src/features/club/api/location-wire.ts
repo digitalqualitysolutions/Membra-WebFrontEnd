@@ -104,6 +104,25 @@ export const locationsListResponseSchema = z.object({
 });
 
 /**
+ * What `PATCH /clubs/{clubId}/locations/{locationId}` answers with.
+ *
+ * Not a bare location, unlike every other location call: a patch cascades, and
+ * the API says what else it moved. Switching one off switches off everything
+ * inside it; switching one on re-opens the ancestors it hangs from; and a new
+ * `shortName` or `parentLocationId` recomposes `shownName` all the way down.
+ *
+ * `affected` is those other rows, the target excluded.
+ */
+export const updateLocationResponseSchema = z.object({
+  location: locationResponseSchema,
+  affected: z.array(locationResponseSchema),
+});
+
+export type UpdateLocationResponse = z.infer<
+  typeof updateLocationResponseSchema
+>;
+
+/**
  * What `DELETE /clubs/{clubId}/locations/{locationId}` answers with.
  *
  * Every id the delete took, the target included - the API removes a location
