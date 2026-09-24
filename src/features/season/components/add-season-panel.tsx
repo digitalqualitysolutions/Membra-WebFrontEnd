@@ -1,7 +1,7 @@
 "use client";
 
-import { useTranslations } from "next-intl";
-import { useRef, useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
+import { useState, useTransition } from "react";
 import type { ReactNode } from "react";
 
 import { Icon } from "@/components/icons";
@@ -9,12 +9,18 @@ import { Button } from "@/components/ui/button";
 import { DateInput } from "@/components/ui/date-input";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import {
+  SEASON_NAME_MAX,
+  SEASON_SHORT_MAX,
+} from "@/features/club/api/season-wire";
+import { saveSeasonsAction } from "@/features/season/services/save-seasons";
 import type { SeasonRow } from "@/features/season/types";
 import { dayMonthYearToIso } from "@/lib/date";
 import { cn } from "@/lib/utils";
 
-const NAME_MAX = 60;
-const SHORT_MAX = 12;
+/** The API's own caps, so an over-long value can't be typed in the first place. */
+const NAME_MAX = SEASON_NAME_MAX;
+const SHORT_MAX = SEASON_SHORT_MAX;
 
 /** Matches the compact sizing the record cards type into. */
 const compact = "h-9 px-3 text-[13px]";
@@ -32,15 +38,25 @@ const compact = "h-9 px-3 text-[13px]";
  */
 export function AddSeasonPanel({
   seasons,
-  onCreate,
+  clubId,
+  onCreated,
   onClose,
 }: {
   /** Everything already stored, which is what a short code can't clash with. */
   seasons: readonly SeasonRow[];
-  onCreate: (season: SeasonRow) => void;
+  /** The club to create it under. `null` when the member runs none, which
+      disables Save: there is nothing to create a season in. */
+  clubId: number | null;
+  /** The club's seasons as the API now holds them, the new one included. */
+  onCreated: (seasons: SeasonRow[]) => void;
   onClose: () => void;
 }) {
   const t = useTranslations("season");
+  const locale = useLocale();
+
+  /** Why the API turned the season down, already in the member's language. */
+  const [failure, setFailure] = useState<string | null>(null);
+  const [saving, startSaving] = useTransition();
 
   const [name, setName] = useState("");
   const [short, setShort] = useState("");
@@ -50,9 +66,6 @@ export function AddSeasonPanel({
   const [teams, setTeams] = useState(true);
   const [locations, setLocations] = useState(false);
   const [active, setActive] = useState(true);
-
-  /** A key for the created row. A counter, since reading a clock is impure. */
-  const nextId = useRef(1);
 
   /*
    * Both on is fine; both off is a season that registers nobody and allocates
@@ -82,6 +95,7 @@ export function AddSeasonPanel({
   const backwards = startIso !== null && endIso !== null && endIso < startIso;
 
   const ready =
+    clubId !== null &&
     name.trim().length > 0 &&
     code.length > 0 &&
     !duplicate &&
@@ -90,20 +104,41 @@ export function AddSeasonPanel({
     !backwards;
 
   function save() {
-    if (!ready) return;
+    if (!ready || clubId === null || startIso === null || endIso === null) {
+      return;
+    }
 
-    onCreate({
-      id: `new-${(nextId.current += 1)}`,
-      name: name.trim(),
-      short: code,
-      start: startIso,
-      end: endIso,
-      teams,
-      locations,
-      active,
+    setFailure(null);
+
+    startSaving(async () => {
+      const result = await saveSeasonsAction({
+        locale,
+        clubId,
+        created: [
+          {
+            name: name.trim(),
+            shortName: code,
+            seasonStart: startIso,
+            seasonEnd: endIso,
+            forTeams: teams,
+            forLocations: locations,
+            active,
+          },
+        ],
+        changes: [],
+      });
+
+      // The list as the API now holds it - the created season's id is its
+      // to assign, so it can only come back from a read.
+      if (result.seasons) onCreated(result.seasons);
+
+      if (result.formError !== undefined) {
+        setFailure(result.formError);
+        return;
+      }
+
+      onClose();
     });
-
-    onClose();
   }
 
   return (
@@ -217,8 +252,16 @@ export function AddSeasonPanel({
           </Field>
 
           <Control>
-            <Button type="button" disabled={!ready} onClick={save}>
-              <Icon name="save" size="xs" />
+            <Button
+              type="button"
+              disabled={!ready || saving}
+              onClick={save}
+            >
+              {saving ? (
+                <Icon name="pending" size="xs" className="animate-spin" />
+              ) : (
+                <Icon name="save" size="xs" />
+              )}
               {t("form.save")}
             </Button>
           </Control>
@@ -233,6 +276,16 @@ export function AddSeasonPanel({
               : t("invalid.endBeforeStart", {
                   name: name.trim() || t("row.newName"),
                 })}
+          </p>
+        </div>
+      ) : null}
+
+      {/* The row stays open and filled in behind this: whatever the API
+          refused, retyping the other six fields isn't the way to fix it. */}
+      {failure ? (
+        <div className="border-t border-line px-5 py-3 sm:px-6">
+          <p role="alert" className="text-[13px] text-danger">
+            {failure}
           </p>
         </div>
       ) : null}

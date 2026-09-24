@@ -1,7 +1,7 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import type { ReactNode } from "react";
 
 import { Icon } from "@/components/icons";
@@ -16,9 +16,17 @@ import {
   SaveBar,
   compactInput,
 } from "@/features/club/components/record-parts";
-import { ActiveSeasonNote } from "@/features/season/components/active-season-note";
+import {
+  SEASON_NAME_MAX,
+  SEASON_SHORT_MAX,
+} from "@/features/club/api/season-wire";
 import { AddSeasonPanel } from "@/features/season/components/add-season-panel";
 import { SeasonHelp } from "@/features/season/components/season-help";
+import { saveSeasonsAction } from "@/features/season/services/save-seasons";
+import type {
+  NewSeason,
+  SeasonChange,
+} from "@/features/season/services/season-state";
 import type { SeasonRow, SeasonToggle } from "@/features/season/types";
 import { dayMonthYearToIso, fromIsoDate } from "@/lib/date";
 import { cn } from "@/lib/utils";
@@ -30,8 +38,9 @@ const toggleColumns = [
   { key: "active", label: "active" },
 ] as const;
 
-const NAME_MAX = 60;
-const SHORT_MAX = 12;
+/** The API's own caps, so an over-long value can't be typed in the first place. */
+const NAME_MAX = SEASON_NAME_MAX;
+const SHORT_MAX = SEASON_SHORT_MAX;
 
 /** Lets Add put the cursor back in a row that's already on screen. */
 const nameInputId = (id: string) => `season-name-${id}`;
@@ -122,59 +131,27 @@ function isComplete(row: SeasonDraft) {
 }
 
 /**
- * The season a given day falls inside.
- *
- * Compared as strings: `YYYY-MM-DD` sorts the same way it reads, so this needs
- * no `Date` and no timezone to go wrong in. A season that's switched off isn't
- * running whatever its dates say.
- *
- * Today arrives as a prop rather than being read here, so that the server and
- * the browser can't disagree about what day it is and hand React two different
- * banners to reconcile.
- */
-function runningOn(
-  seasons: readonly SeasonRow[],
-  today: string,
-): SeasonRow | null {
-  return (
-    seasons.find(
-      (season) =>
-        season.active && season.start <= today && today <= season.end,
-    ) ?? null
-  );
-}
-
-/**
  * The club's operational year.
  *
- * Owns the list rather than taking it as a fixed prop, so the note above the
- * table and the table itself can't disagree about which season is running -
- * switching one off has to move both.
- *
- * PLACEHOLDER, like the rest of the app: seasons have no endpoint yet, so Save
- * commits the draft into state here and goes no further.
+ * Holds the list in state rather than reading the prop directly, so the note
+ * above the table and the table itself can't disagree about which season is
+ * running - switching one off has to move both - and so a save can put the
+ * API's answer straight back on screen without waiting for a round trip.
  */
 export function SeasonsScreen({
-  seasons: sample,
-  today,
+  seasons: saved,
+  clubId,
 }: {
   seasons: SeasonRow[];
-  /** `YYYY-MM-DD`, settled on the server so both renders agree on it. */
-  today: string;
+  /** The club these belong to. `null` when the member runs none, which
+      leaves the screen read-only: there is nothing to create a season under. */
+  clubId: number | null;
 }) {
   const t = useTranslations("season");
   const locale = useLocale();
 
-  /*
-   * TEMPORARY, while seasons have no endpoint.
-   *
-   * The screen opens empty so the first view can be seen, and the button on it
-   * fills the table with `sample` rather than creating a season. When the
-   * endpoint lands these two become `useState(sample)` and `useState(() =>
-   * sample.map(toDraft))`, and the button opens a form like every other Add.
-   */
-  const [seasons, setSeasons] = useState<SeasonRow[]>([]);
-  const [rows, setRows] = useState<SeasonDraft[]>([]);
+  const [seasons, setSeasons] = useState(saved);
+  const [rows, setRows] = useState(() => saved.map(toDraft));
 
   /** Whether the first-run panel is open, before there is a table to add to. */
   const [adding, setAdding] = useState(false);
@@ -182,16 +159,12 @@ export function SeasonsScreen({
   /** Keys for added rows. A counter, since reading a clock mid-render is impure. */
   const nextRow = useRef(1);
 
-  /**
-   * The club's first season, from the panel.
-   *
-   * TEMPORARY: the made-up rows come along with it, so the table it hands over
-   * to has something in it to look at. When the endpoint lands this is just
-   * `[created]` and `sample` goes with the rest of the dummy file.
-   */
-  function create(created: SeasonRow) {
-    const next = [...sample, created];
+  /** Why the last save didn't go through, already in the member's language. */
+  const [failure, setFailure] = useState<string | undefined>(undefined);
+  const [saving, startSaving] = useTransition();
 
+  /** The club's seasons as the API now holds them, after a create or a save. */
+  function commit(next: SeasonRow[]) {
     setSeasons(next);
     setRows(next.map(toDraft));
   }
@@ -265,6 +238,7 @@ export function SeasonsScreen({
 
   function cancel() {
     setRows(seasons.map(toDraft));
+    setFailure(undefined);
     setTyping(null);
     setEditing(false);
   }
@@ -308,17 +282,110 @@ export function SeasonsScreen({
 
   const problem = firstProblem();
 
+  /**
+   * Everything this edit changed, in one call.
+   *
+   * Rows added here are created; stored rows send only the fields that moved.
+   * Whatever comes back is what the API holds, which is the only place a
+   * created row's id exists - so the answer replaces the list rather than
+   * being merged into it.
+   */
   function save() {
-    if (problem) return;
+    if (problem || clubId === null) return;
 
-    const committed = rows.map(fromDraft);
+    const before = new Map(seasons.map((season) => [season.id, season]));
+    const created: NewSeason[] = [];
+    const changes: SeasonChange[] = [];
 
-    setSeasons(committed);
-    // Back through `toDraft`, so a row added in this edit stops counting as
-    // added and the draft matches what's now saved.
-    setRows(committed.map(toDraft));
-    setTyping(null);
-    setEditing(false);
+    for (const row of rows) {
+      const now = fromDraft(row);
+
+      if (row.added) {
+        created.push({
+          name: now.name,
+          shortName: now.short,
+          seasonStart: now.start,
+          seasonEnd: now.end,
+          forTeams: now.teams,
+          forLocations: now.locations,
+          active: now.active,
+        });
+
+        continue;
+      }
+
+      const was = before.get(row.id);
+      if (!was) continue;
+
+      const change: SeasonChange = { seasonId: Number(row.id) };
+      let moved = false;
+
+      if (now.name !== was.name) {
+        change.name = now.name;
+        moved = true;
+      }
+
+      if (now.short !== was.short) {
+        change.shortName = now.short;
+        moved = true;
+      }
+
+      if (now.start !== was.start) {
+        change.seasonStart = now.start;
+        moved = true;
+      }
+
+      if (now.end !== was.end) {
+        change.seasonEnd = now.end;
+        moved = true;
+      }
+
+      if (now.teams !== was.teams) {
+        change.forTeams = now.teams;
+        moved = true;
+      }
+
+      if (now.locations !== was.locations) {
+        change.forLocations = now.locations;
+        moved = true;
+      }
+
+      if (now.active !== was.active) {
+        change.active = now.active;
+        moved = true;
+      }
+
+      if (moved) changes.push(change);
+    }
+
+    if (created.length === 0 && changes.length === 0) {
+      setTyping(null);
+      setEditing(false);
+      return;
+    }
+
+    setFailure(undefined);
+
+    startSaving(async () => {
+      const result = await saveSeasonsAction({
+        locale,
+        clubId,
+        created,
+        changes,
+      });
+
+      // What the API now holds, whatever happened: a create may have landed
+      // before a later one was refused, and there is no delete to undo it.
+      if (result.seasons) commit(result.seasons);
+
+      if (result.formError !== undefined) {
+        setFailure(result.formError);
+        return;
+      }
+
+      setTyping(null);
+      setEditing(false);
+    });
   }
 
   /** A blank season at the foot of the table, open for typing. */
@@ -393,8 +460,7 @@ export function SeasonsScreen({
   /*
    * A club with no seasons gets none of the page's furniture.
    *
-   * No heading, no note and no table: the heading heads a list and there isn't
-   * one, and the note names the season running today when none exists at all.
+   * No heading and no table: a heading heads a list, and there isn't one yet.
    * The first view is one button, the same as the locations screen's.
    */
   if (seasons.length === 0) {
@@ -424,7 +490,8 @@ export function SeasonsScreen({
       <div className="flex flex-col gap-4">
         <AddSeasonPanel
           seasons={seasons}
-          onCreate={create}
+          clubId={clubId}
+          onCreated={commit}
           onClose={() => setAdding(false)}
         />
 
@@ -446,8 +513,6 @@ export function SeasonsScreen({
           {t("description")}
         </p>
       </header>
-
-      <ActiveSeasonNote current={runningOn(seasons, today)} />
 
       <section className="overflow-hidden rounded-2xl border border-line bg-surface shadow-card">
         {/* No fold chevron: the table is the whole point of the page, and
@@ -645,33 +710,27 @@ export function SeasonsScreen({
                               )}
 
                               {/*
-                                A saved row is deleted; a row added in this edit
-                                is only taken back, so it gets the cross the
-                                address and contact cards use for the same job -
-                                there is nothing upstream to delete. Neither asks
-                                first: both only leave the draft, and Cancel puts
-                                them back.
+                                Only a row added in this edit can go, and it
+                                goes with the cross the address and contact
+                                cards use: nothing upstream has been created
+                                yet, so this is taking it back rather than
+                                deleting it.
+
+                                A stored season has no delete at all - the API
+                                offers none - so there is no button to offer
+                                one with. Switching it inactive is how a club
+                                retires a season.
                               */}
-                              <button
-                                type="button"
-                                aria-label={
-                                  season.added
-                                    ? t("row.removeNew")
-                                    : t("row.delete", { name: nameOf(season) })
-                                }
-                                onClick={() => remove(season.id)}
-                                className={cn(
-                                  "inline-flex size-7 items-center justify-center rounded-md text-ink-muted transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/40",
-                                  season.added
-                                    ? "hover:bg-badge hover:text-ink"
-                                    : "hover:bg-destructive/10 hover:text-destructive",
-                                )}
-                              >
-                                <Icon
-                                  name={season.added ? "close" : "delete"}
-                                  size="xs"
-                                />
-                              </button>
+                              {season.added ? (
+                                <button
+                                  type="button"
+                                  aria-label={t("row.removeNew")}
+                                  onClick={() => remove(season.id)}
+                                  className="inline-flex size-7 items-center justify-center rounded-md text-ink-muted transition-colors outline-none hover:bg-badge hover:text-ink focus-visible:ring-2 focus-visible:ring-ring/40"
+                                >
+                                  <Icon name="close" size="xs" />
+                                </button>
+                              ) : null}
                             </div>
                           </Td>
                         ) : null}
@@ -687,9 +746,12 @@ export function SeasonsScreen({
             // What's happened, not just what's possible: once something has
             // actually moved, the bar says so.
             message={dirty ? t("card.unsaved") : t("card.editing")}
-            error={problem}
+            // A value that can't be sent is worth saying before the API does;
+            // once it has spoken, what it said wins.
+            error={problem ?? failure}
             dirty={dirty}
-            saveDisabled={problem !== undefined}
+            pending={saving}
+            saveDisabled={problem !== undefined || clubId === null}
             cancelLabel={t("card.cancel")}
             saveLabel={t("card.save")}
             onCancel={cancel}

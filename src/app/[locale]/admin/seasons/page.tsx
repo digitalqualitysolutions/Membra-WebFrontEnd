@@ -4,11 +4,12 @@ import { notFound } from "next/navigation";
 
 import { AccountUnavailable } from "@/components/layout/account-unavailable";
 import { AppShell } from "@/components/layout/app-shell";
+import { LoadFailed } from "@/components/ui/load-failed";
 import { isLocale } from "@/config/locales";
 import { loadSession } from "@/features/auth/server/session";
+import { clubDetails } from "@/features/club/services/club-details";
 import { SeasonsScreen } from "@/features/season/components/seasons-screen";
-import { dummySeasons } from "@/features/season/dummy-seasons";
-import { toIsoDate } from "@/lib/date";
+import { seasonOverview } from "@/features/season/services/season-overview";
 
 export async function generateMetadata({
   params,
@@ -29,9 +30,9 @@ export async function generateMetadata({
  * replaces that placeholder for this one destination - the sidebar link and the
  * header chip both go on reading `config/navigation.ts` and don't notice.
  *
- * The rows are made up for now: seasons have no endpoint yet, so there is
- * nothing to fetch and nothing that can fail to load. When one lands this grows
- * the same `Loaded`/`LoadFailed` pair the locations page has.
+ * The rows are fetched here and handed down, the way the locations page hands
+ * its table the estate: the screen is a client component, because the filter,
+ * the edit and the draft are all state, and it can't ask for them itself.
  */
 export default async function Seasons({
   params,
@@ -46,6 +47,11 @@ export default async function Seasons({
   if (!session.ok) return <AccountUnavailable locale={locale} />;
 
   const user = session.data;
+  const t = await getTranslations({ locale });
+
+  // The club comes along for its id: a season is created under one, and
+  // without it the screen has nothing to save against.
+  const [seasons, club] = await Promise.all([seasonOverview(), clubDetails()]);
 
   return (
     <AppShell
@@ -57,11 +63,20 @@ export default async function Seasons({
     >
       {/* A growing flex column, so an empty screen can centre its card in the
           page's height. The heading lives inside the screen component: it only
-          belongs once there are seasons, and on an empty club there are none. */}
+          belongs once there are seasons, and on a new club there are none. */}
       <div className="flex w-full flex-1 flex-col">
-        {/* Today is settled here rather than in the browser, so the note above
-            the table renders the same on both sides of hydration. */}
-        <SeasonsScreen seasons={dummySeasons} today={toIsoDate(new Date())} />
+        {seasons.ok ? (
+          <SeasonsScreen
+            seasons={seasons.data}
+            // Which club a season is created under. No club record means there
+            // is nothing to create one in, and the screen disables Save.
+            clubId={club.ok ? (club.data?.id ?? null) : null}
+          />
+        ) : (
+          // The shell, header and navigation all rendered; only the table is
+          // missing, and its own Try again reloads just this page.
+          <LoadFailed title={t("errorPage.partSeasons")} />
+        )}
       </div>
     </AppShell>
   );

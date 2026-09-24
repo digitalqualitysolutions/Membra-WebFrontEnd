@@ -565,15 +565,6 @@ export const en = {
     description:
       "Manage operational seasons, start and end dates, team registrations, court allocations, and active status.",
 
-    /** The strip above the table: which season the club is in right now. */
-    note: {
-      title: "Active season schedule",
-      current: "Current active: {name}",
-      /** Every season is either switched off or out of date today. */
-      none: "No season is running today",
-      body: "Changes to season start and end dates directly affect recurring court bookings, match schedules, and roster sign-ups.",
-    },
-
     card: {
       title: "Seasons",
       editAll: "Edit seasons",
@@ -743,6 +734,7 @@ export const en = {
     /** Names the part that failed, in the space that part would have filled. */
     partClub: "The club record couldn't be loaded",
     partLocations: "Locations couldn't be loaded",
+    partSeasons: "Seasons couldn't be loaded",
     /** The member's own record: the page's contents and their avatar. */
     partAccount: "Your account couldn't be loaded",
     retry: "Try again",

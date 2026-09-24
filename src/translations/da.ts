@@ -494,13 +494,6 @@ export const da: Dictionary = {
     description:
       "Administrer driftssæsoner, start- og slutdatoer, holdtilmeldinger, banefordeling og aktiv status.",
 
-    note: {
-      title: "Aktiv sæsonplan",
-      current: "Aktiv nu: {name}",
-      none: "Ingen sæson kører i dag",
-      body: "Ændringer af en sæsons start- og slutdato påvirker direkte gentagne banebookinger, kampprogrammer og holdtilmeldinger.",
-    },
-
     card: {
       title: "Sæsoner",
       editAll: "Rediger sæsoner",
@@ -650,6 +643,7 @@ export const da: Dictionary = {
       "Det hjælper som regel at prøve igen; resten af siden er upåvirket.",
     partClub: "Klubbens oplysninger kunne ikke indlæses",
     partLocations: "Lokationer kunne ikke indlæses",
+    partSeasons: "Sæsoner kunne ikke indlæses",
     partAccount: "Din konto kunne ikke indlæses",
     retry: "Prøv igen",
   },
