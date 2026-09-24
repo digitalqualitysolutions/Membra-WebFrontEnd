@@ -10,9 +10,11 @@ import {
   locationResponseSchema,
   locationsListResponseSchema,
   updateLocationRequestSchema,
+  updateLocationResponseSchema,
   type CreateLocationRequest,
   type LocationResponse,
   type UpdateLocationRequest,
+  type UpdateLocationResponse,
 } from "@/features/club/api/location-wire";
 import { api, requestBody } from "@/lib/http/api";
 
@@ -87,8 +89,15 @@ export async function createLocation(
 /**
  * Change some of a location's fields; the rest stay as they are.
  *
- * A new `shortName` or `parentLocationId` makes the API recompute `shownName`
- * here and on every descendant, so the caller re-reads the list afterwards.
+ * Cascades, which is why this alone answers with more than the row it was
+ * given. `active` false closes every descendant, `active` true re-opens the
+ * ancestors up to the root, and a new `shortName` or `parentLocationId`
+ * recomposes `shownName` all the way down. The answer carries the target as
+ * `location` and everything else it moved as `affected`.
+ *
+ * Callers here re-read the whole list anyway, so they use neither - but the
+ * shape has to be parsed as it actually arrives, or every patch comes back a
+ * `CONTRACT_MISMATCH` and a save that really did land reads as a failure.
  *
  * @throws {ApiError} 400 for a value refused, 403 without admin rights, 404
  *   for no such club or location.
@@ -98,10 +107,10 @@ export async function updateLocation(
   locationId: number,
   body: UpdateLocationRequest,
   sessionToken: string,
-): Promise<LocationResponse> {
+): Promise<UpdateLocationResponse> {
   const path = `/clubs/${segment(clubId)}/locations/${segment(locationId)}`;
 
-  const { data } = await api(locationResponseSchema, path, {
+  const { data } = await api(updateLocationResponseSchema, path, {
     method: "PATCH",
     body: requestBody(updateLocationRequestSchema, path, body),
     headers: withSession(sessionToken),

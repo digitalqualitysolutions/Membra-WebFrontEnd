@@ -60,6 +60,32 @@ function descendantsOf(
   return found;
 }
 
+/**
+ * Everything `id` hangs off, nearest first.
+ *
+ * The other half of `descendantsOf`, and what the active cascade climbs: the
+ * API re-opens a closed hall when something inside it is switched on.
+ */
+function ancestorsOf(
+  rows: readonly ClubLocation[],
+  id: string,
+): ClubLocation[] {
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  const found: ClubLocation[] = [];
+
+  let parent = byId.get(id)?.parentLocation ?? null;
+
+  while (parent) {
+    const row = byId.get(parent);
+    if (!row) break;
+
+    found.push(row);
+    parent = row.parentLocation;
+  }
+
+  return found;
+}
+
 /** The on/off columns, in the order the table shows them. */
 const toggleColumns = [
   { key: "memberBooking", label: "memberBooking" },
@@ -455,6 +481,34 @@ export function ClubLocationsCard({
     );
   }
 
+  /**
+   * Switch a location on or off, and everything the API will take with it.
+   *
+   * The cascade is the API's, mirrored here so the table shows what is about
+   * to be saved rather than only what was clicked. Switching a hall off closes
+   * every court inside it; switching a court on re-opens the hall it sits in,
+   * because a court inside a closed hall is a row nothing can book.
+   *
+   * The server does this again on save regardless, so the worst a stale mirror
+   * could cost is a redraw - but a table that showed a court open inside a
+   * hall it had just closed would be lying about what Save commits.
+   */
+  function setActive(id: string, checked: boolean) {
+    if (!editing) begin();
+
+    setRows((current) => {
+      const cascade = checked
+        ? ancestorsOf(current, id)
+        : descendantsOf(current, id);
+
+      const touched = new Set([id, ...cascade.map((row) => row.id)]);
+
+      return current.map((row) =>
+        touched.has(row.id) ? { ...row, active: checked } : row,
+      );
+    });
+  }
+
   return (
     <section className="overflow-hidden rounded-2xl border border-line bg-surface shadow-card">
       <CardHeader
@@ -735,7 +789,11 @@ export function ClubLocationsCard({
                           disabled={!editing}
                           label={t(`columns.${label}`)}
                           onChange={(checked) =>
-                            update(location.id, { [key]: checked })
+                            // Active is the one that carries other rows with
+                            // it; the rest touch only their own.
+                            key === "active"
+                              ? setActive(location.id, checked)
+                              : update(location.id, { [key]: checked })
                           }
                         />
                       </Td>

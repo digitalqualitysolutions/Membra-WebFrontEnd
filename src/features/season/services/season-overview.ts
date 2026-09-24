@@ -5,7 +5,6 @@ import { listMyClubIds } from "@/features/club/api/club-endpoints";
 import { listSeasons } from "@/features/club/api/season-endpoints";
 import { toSeasons } from "@/features/club/api/season-wire";
 import type { SeasonRow } from "@/features/season/types";
-import { ApiError } from "@/lib/http/api-error";
 import { loaded, LOAD_FAILED, type Loaded } from "@/lib/loaded";
 
 /**
@@ -21,7 +20,9 @@ import { loaded, LOAD_FAILED, type Loaded } from "@/lib/loaded";
  */
 export async function seasonOverview(): Promise<Loaded<SeasonRow[]>> {
   const token = await readSessionToken();
-  if (!token) return loaded([]);
+
+  // A session that couldn't be read is a failure, not a club without seasons.
+  if (!token) return LOAD_FAILED;
 
   let clubId: number | undefined;
 
@@ -43,10 +44,9 @@ export async function seasonOverview(): Promise<Loaded<SeasonRow[]>> {
     // which is the order a club reads its year in. Nothing re-sorts them.
     return loaded(toSeasons(await listSeasons(clubId, token)));
   } catch (error) {
-    // A club that's gone has no seasons, the same reading `clubLocations`
-    // gives a 404 from its own endpoint.
-    if (ApiError.isApiError(error) && error.status === 404) return loaded([]);
-
+    // Every failure is a failure, a 404 included: `GET /clubs` named this id a
+    // moment ago, so a 404 now contradicts it. An empty table over a club that
+    // has seasons invites someone to create them a second time.
     console.error("[seasons] could not be loaded", error);
 
     return LOAD_FAILED;
