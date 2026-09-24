@@ -30,6 +30,15 @@ const earliestYear = 1900;
 /** Where the calendar opens while the field is still empty. */
 const typicalMemberAge = 25;
 
+/**
+ * How far a forward-looking field reaches either side of today.
+ *
+ * A season is planned a year or two out and kept for a few years after, so a
+ * decade each way covers it without turning the year dropdown into a list of
+ * everything since 1900.
+ */
+const yearsEitherSide = 10;
+
 export type DateInputProps = Omit<
   React.ComponentProps<typeof InputGroupInput>,
   "type" | "value" | "onChange"
@@ -47,6 +56,15 @@ export type DateInputProps = Omit<
    * it, where the default is sized for a sign-in form.
    */
   groupClassName?: string;
+  /**
+   * How far the calendar reaches.
+   *
+   * `past` is the default, and what a date of birth or a club's founding date
+   * wants: back to 1900, opening on a plausible birth year, with tomorrow
+   * onwards closed off. `either` is for a date that is meant to be in the
+   * future - a season's start and end - and opens on today with nothing barred.
+   */
+  span?: "past" | "either";
 };
 
 /**
@@ -66,6 +84,7 @@ export function DateInput({
   // birth, but a club's founding date would otherwise be offered the admin's
   // own birthday by the browser.
   autoComplete = "bday",
+  span = "past",
   "aria-invalid": ariaInvalid,
   ...props
 }: DateInputProps) {
@@ -74,6 +93,17 @@ export function DateInput({
 
   const selected = parseDayMonthYear(value) ?? undefined;
   const today = new Date();
+
+  /** A forward-looking field: the calendar runs either side of today. */
+  const ahead = span === "either";
+
+  const startMonth = ahead
+    ? new Date(today.getFullYear() - yearsEitherSide, 0)
+    : new Date(earliestYear, 0);
+
+  const endMonth = ahead
+    ? new Date(today.getFullYear() + yearsEitherSide, 11)
+    : today;
 
   function handleChange(event: ChangeEvent<HTMLInputElement>) {
     onValueChange(formatDayMonthYear(event.target.value, value));
@@ -139,10 +169,16 @@ export function DateInput({
           // stretches to the field instead of sitting at its natural size.
           classNames={{ root: `w-full ${getDefaultClassNames().root}` }}
           // Open near a plausible birth year. Starting at today leaves the
-          // user thirty years of paging.
+          // user thirty years of paging - unless the field looks forward, and
+          // then today is exactly where it should start.
           defaultMonth={
             selected ??
-            new Date(today.getFullYear() - typicalMemberAge, today.getMonth())
+            (ahead
+              ? today
+              : new Date(
+                  today.getFullYear() - typicalMemberAge,
+                  today.getMonth(),
+                ))
           }
           onSelect={(date) => {
             if (!date) return;
@@ -152,9 +188,10 @@ export function DateInput({
           }}
           // Dropdowns, since you can't page your way to a birth year.
           captionLayout="dropdown"
-          startMonth={new Date(earliestYear, 0)}
-          endMonth={today}
-          disabled={{ after: today }}
+          startMonth={startMonth}
+          endMonth={endMonth}
+          // A birth date can't be in the future; a season's very much can.
+          disabled={ahead ? undefined : { after: today }}
           autoFocus
           locale={
             calendarLocales[locale as keyof typeof calendarLocales] ?? enUS

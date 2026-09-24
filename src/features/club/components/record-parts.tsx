@@ -142,6 +142,7 @@ export function SaveBar({
   pending = false,
   error,
   saveDisabled = false,
+  dirty,
 }: {
   message: string;
   onCancel: () => void;
@@ -154,6 +155,14 @@ export function SaveBar({
   error?: string;
   /** Something required is missing, so there's nothing valid to send yet. */
   saveDisabled?: boolean;
+  /**
+   * Whether anything has actually moved since the edit began.
+   *
+   * Save stays off until it has: there is nothing to commit, and a live Save
+   * over an untouched form only invites a round trip that changes nothing.
+   * Left out by cards that don't track it yet, which keeps Save live for them.
+   */
+  dirty?: boolean;
 }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-4 border-t border-line bg-page px-5 py-4 sm:px-6">
@@ -175,18 +184,30 @@ export function SaveBar({
           {cancelLabel}
         </Button>
 
-        <Button
-          type="button"
-          disabled={pending || saveDisabled}
-          onClick={onSave}
-        >
-          {pending ? (
-            <Icon name="pending" size="xs" className="animate-spin" />
-          ) : (
-            <Icon name="save" size="xs" />
-          )}
-          {saveLabel}
-        </Button>
+        {/*
+          Gone rather than greyed while there is nothing to save: a dead button
+          sitting there is a thing to wonder about, and Cancel alone says the
+          same thing more plainly - nothing has moved, so there is only a way
+          out. It comes back with the first change.
+
+          Still shown, and disabled, once something *has* changed but can't be
+          sent yet: the error beside it says why, and a Save that vanished at
+          the first keystroke would read as the card breaking.
+        */}
+        {dirty === false ? null : (
+          <Button
+            type="button"
+            disabled={pending || saveDisabled}
+            onClick={onSave}
+          >
+            {pending ? (
+              <Icon name="pending" size="xs" className="animate-spin" />
+            ) : (
+              <Icon name="save" size="xs" />
+            )}
+            {saveLabel}
+          </Button>
+        )}
       </div>
     </div>
   );
@@ -201,16 +222,21 @@ export function CardHeader({
   description,
   editLabel,
   onEdit,
+  badge,
   aside,
 }: {
-  open: boolean;
-  onToggle: () => void;
-  collapseLabel: string;
+  /** All three go together, and all three are left out by a card that
+      doesn't fold away - there is then no chevron and nothing to label. */
+  open?: boolean;
+  onToggle?: () => void;
+  collapseLabel?: string;
   title: string;
   description?: string;
   editLabel?: string;
   /** Left out to leave the pencil off - a card with nothing to edit yet. */
   onEdit?: () => void;
+  /** What the title counts up to, in a pill beside it: "5 seasons configured". */
+  badge?: ReactNode;
   /** The right-hand end of the header: a summary, a search, an action. */
   aside?: ReactNode;
 }) {
@@ -228,22 +254,24 @@ export function CardHeader({
       )}
     >
       <div className={cn("flex min-w-0 gap-3", !description && "items-center")}>
-        <button
-          type="button"
-          onClick={onToggle}
-          aria-expanded={open}
-          aria-label={collapseLabel}
-          className={cn(
-            "inline-flex size-8 shrink-0 items-center justify-center rounded-lg bg-badge text-ink transition-colors outline-none hover:bg-track focus-visible:ring-2 focus-visible:ring-ring/40",
-            description && "mt-0.5",
-          )}
-        >
-          <Icon
-            name="selectArrow"
-            size="sm"
-            className={cn("transition-transform", !open && "-rotate-90")}
-          />
-        </button>
+        {onToggle ? (
+          <button
+            type="button"
+            onClick={onToggle}
+            aria-expanded={open}
+            aria-label={collapseLabel}
+            className={cn(
+              "inline-flex size-8 shrink-0 items-center justify-center rounded-lg bg-badge text-ink transition-colors outline-none hover:bg-track focus-visible:ring-2 focus-visible:ring-ring/40",
+              description && "mt-0.5",
+            )}
+          >
+            <Icon
+              name="selectArrow"
+              size="sm"
+              className={cn("transition-transform", !open && "-rotate-90")}
+            />
+          </button>
+        ) : null}
 
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -257,6 +285,8 @@ export function CardHeader({
             {onEdit ? (
               <PencilButton label={editLabel ?? title} onClick={onEdit} />
             ) : null}
+
+            {badge}
           </div>
 
           {description ? (

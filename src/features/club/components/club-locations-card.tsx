@@ -815,6 +815,7 @@ export function ClubLocationsCard({
               // saying before the API does.
               error={problem ?? failure}
               pending={saving}
+              dirty={dirty}
               saveDisabled={problem !== undefined}
               cancelLabel={tEditing("cancel")}
               saveLabel={tEditing("save")}

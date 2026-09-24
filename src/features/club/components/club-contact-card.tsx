@@ -210,6 +210,21 @@ export function ClubContactCard({
     });
   }
 
+  /**
+   * Take back a row that was only ever being added.
+   *
+   * Ends the edit when that leaves nothing changed: the member got in here by
+   * pressing Add, so the cross that undoes it should put the card back as it
+   * found it rather than leave a save bar over an untouched table.
+   */
+  function removeAdded(index: number) {
+    const next = adding.filter((_, at) => at !== index);
+
+    setAdding(next);
+
+    if (next.length === 0 && !rowsChanged) cancel();
+  }
+
   /** An empty set of fields under everything already on the card. */
   function addContact() {
     setAdding((current) => [...current, blank]);
@@ -271,6 +286,20 @@ export function ClubContactCard({
    * nothing wrong. Both are optional, so only what's been filled in is held to
    * a shape.
    */
+  /**
+   * Whether a stored row has actually been typed into.
+   *
+   * Opening a row isn't changing it - its pencil seeds `edits` with the stored
+   * contact - so each open row is compared against what it was opened from.
+   */
+  const rowsChanged = Object.entries(edits).some(
+    ([index, row]) =>
+      JSON.stringify(row) !== JSON.stringify(contacts[Number(index)]),
+  );
+
+  /** A row being added always counts: it wasn't on the card before. */
+  const dirty = adding.length > 0 || rowsChanged;
+
   const typing = [...Object.values(edits), ...adding];
   const problem = !typing.every(phoneIsUsable)
     ? t("phoneInvalid")
@@ -467,11 +496,7 @@ export function ClubContactCard({
                         // the row - there's nothing to delete upstream.
                         <button
                           type="button"
-                          onClick={() =>
-                            setAdding((current) =>
-                              current.filter((_, at) => at !== index),
-                            )
-                          }
+                          onClick={() => removeAdded(index)}
                           aria-label={t("remove", {
                             number: contacts.length + index + 1,
                           })}
@@ -491,6 +516,7 @@ export function ClubContactCard({
             <SaveBar
               message={t("editing")}
               error={problem}
+              dirty={dirty}
               saveDisabled={problem !== undefined}
               cancelLabel={tEditing("cancel")}
               saveLabel={tEditing("save")}

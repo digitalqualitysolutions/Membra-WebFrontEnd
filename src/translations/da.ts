@@ -372,10 +372,10 @@ export const da: Dictionary = {
         action: "Slet {name}",
         leafTitle: "Slet {name}?",
         leafBody:
-          "Denne lokation fjernes permanent. Det kan ikke fortrydes.",
+          "Er du sikker på, at du vil slette denne lokation? Handlingen er permanent og kan ikke fortrydes.",
         branchTitle: "Slet {name} og alt indeni?",
         branchBody:
-          "{count, plural, one {# lokation indeni slettes også} other {# lokationer indeni slettes også}}. Det kan ikke fortrydes.",
+          "{count, plural, one {# lokation indeni slettes også} other {# lokationer indeni slettes også}}. Handlingen er permanent og kan ikke fortrydes.",
         confirm: "Slet",
       },
     },
@@ -488,6 +488,106 @@ export const da: Dictionary = {
     },
   },
 
+  season: {
+    metaTitle: "Sæsoner",
+    title: "Sæsoner",
+    description:
+      "Administrer driftssæsoner, start- og slutdatoer, holdtilmeldinger, banefordeling og aktiv status.",
+
+    card: {
+      title: "Sæsoner",
+      editAll: "Rediger sæsoner",
+      count:
+        "{count, plural, one {# sæson oprettet} other {# sæsoner oprettet}}",
+      filter: "Filtrér efter sæson, kode…",
+      add: "Tilføj sæson",
+      empty: "Ingen sæsoner matcher det filter.",
+      editing: "Alle ændringer valideres, mens du laver dem.",
+      unsaved: "Ikke-gemte ændringer. Gem for at anvende dem på bookinger.",
+      cancel: "Annuller",
+      save: "Gem",
+    },
+
+    form: {
+      title: "Tilføj sæson",
+      close: "Luk tilføj sæson",
+      save: "Gem",
+    },
+
+    emptyState: {
+      title: "Tilføj din første sæson",
+      body: "Sæsoner er de daterede perioder, klubben kører i - en sommer, en vinter, en turnering. Hold tilmelder sig dem, og baner fordeles efter dem.",
+      add: "Tilføj sæson",
+    },
+
+    columns: {
+      season: "Sæson",
+      short: "Kort",
+      start: "Start",
+      end: "Slut",
+      teams: "Hold",
+      locations: "Lokationer",
+      active: "Aktiv",
+      actions: "Handlinger",
+    },
+
+    row: {
+      edit: "Rediger {name}",
+      delete: "Slet {name}",
+      removeNew: "Fjern denne nye sæson",
+      newName: "Ny sæson",
+
+      namePlaceholder: "f.eks. Sommer 26",
+      shortPlaceholder: "f.eks. s26",
+      datePlaceholder: "DD / MM / ÅÅÅÅ",
+      datePicker: "Åbn kalender",
+    },
+
+    help: {
+      title: "Hjælp",
+      description: "Hvad en sæson er, og hvad hver kolonne betyder.",
+      intro:
+        "En sæson er den daterede periode, klubben kører i - en sommer, en vinter, en turnering. Hold tilmelder sig en sæson, baner fordeles efter den, og gentagne bookinger og kampprogrammer følger dens start- og slutdato.",
+      pairRule:
+        "Enhver sæson har hold tilmeldt, baner fordelt eller begge dele. Slår du den ene fra, tændes den anden: en sæson uden nogen af delene har intet at hænge sammen med.",
+
+      terms: {
+        season: "Sæson",
+        short: "Kort",
+        start: "Start",
+        end: "Slut",
+        teams: "Hold",
+        locations: "Lokationer",
+        active: "Aktiv",
+      },
+
+      defs: {
+        season:
+          "Det, klubben kalder perioden - „Sommer 26“, „Vinter 26/27“. Navne behøver ikke være unikke, men medlemmerne læser dette navn på hvert program, så et årstal hjælper.",
+        short:
+          "Den kode, et program, en booking eller et udtræk skriver i stedet for det fulde navn - „s26“, „w26HH.i“. To sæsoner kan ikke dele den samme.",
+        start:
+          "Den første dag, sæsonen dækker. Flytter du den, flytter du også de gentagne banebookinger og kampprogrammer, der hænger på den.",
+        end: "Den sidste dag, sæsonen dækker. En sæson, der slutter før den starter, kan ikke gemmes.",
+        teams:
+          "Hold tilmelder sig denne sæson, og den indgår i holdplanlægning og holdtilmeldinger.",
+        locations:
+          "Baner og faciliteter fordeles til denne sæson, og den indgår i lokationsplaner.",
+        active:
+          "Om sæsonen overhovedet er i brug. En inaktiv sæson beholder sine datoer og indstillinger, men tager ingen tilmeldinger og fordeler ingen baner.",
+      },
+    },
+
+    invalid: {
+      nameRequired: "Hver sæson skal have et navn.",
+      shortRequired: "Hver sæson skal have en kort kode.",
+      shortTaken: "„{short}“ bruges allerede af en anden sæson. Vælg en anden.",
+      startInvalid: "{name} mangler en startdato i formatet DD / MM / ÅÅÅÅ.",
+      endInvalid: "{name} mangler en slutdato i formatet DD / MM / ÅÅÅÅ.",
+      endBeforeStart: "{name} slutter, før den starter.",
+    },
+  },
+
   home: {
     metaTitle: "Forside",
     greeting: "Hej, {name}",
@@ -543,6 +643,7 @@ export const da: Dictionary = {
       "Det hjælper som regel at prøve igen; resten af siden er upåvirket.",
     partClub: "Klubbens oplysninger kunne ikke indlæses",
     partLocations: "Lokationer kunne ikke indlæses",
+    partSeasons: "Sæsoner kunne ikke indlæses",
     partAccount: "Din konto kunne ikke indlæses",
     retry: "Prøv igen",
   },
