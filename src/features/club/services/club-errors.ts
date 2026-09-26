@@ -19,11 +19,14 @@ import { ApiError, NetworkError } from "@/lib/http/api-error";
  * it.
  *
  * @param tag names the action in logs, e.g. `update-club`.
+ * @param rejected which sentence a refused value gets - creating a club reads
+ *   differently from changing one.
  */
 export async function clubFailure(
   error: unknown,
   locale: Locale,
   tag: string,
+  rejected: "saveRejected" | "clubRejected" = "saveRejected",
 ): Promise<string> {
   const t = await getTranslations({ locale, namespace: "errors" });
 
@@ -45,11 +48,12 @@ export async function clubFailure(
 
   /*
    * The API turned a value down. `message` is usually just "Validation failed",
-   * so prefer `details`, which names the fields. English, since the API writes
-   * it, but far more use than a "try again" that can't be acted on.
+   * so prefer `details`, which names the fields. Only the complaint itself is
+   * English - the field it names is labelled the way the form labels it.
    */
   if (error.status === 400) {
-    return t("saveRejected", { reason: validationReason(error) ?? error.message });
+    const reason = (await validationReason(error, locale)) ?? error.message;
+    return t(rejected, { reason });
   }
 
   return t("unexpected");
@@ -59,7 +63,10 @@ export async function clubFailure(
 const REASON_LIMIT = 300;
 
 /** The field errors out of a 400's `details`, as one line. */
-function validationReason(error: ApiError): string | undefined {
+async function validationReason(
+  error: ApiError,
+  locale: Locale,
+): Promise<string | undefined> {
   if (!error.details) return undefined;
 
   let payload: unknown;
@@ -71,7 +78,7 @@ function validationReason(error: ApiError): string | undefined {
     payload = error.details;
   }
 
-  const parts = fieldMessages(payload);
+  const parts = fieldMessages(payload, await fieldLabeller(locale));
   if (parts.length === 0) return undefined;
 
   const reason = parts.join("; ");
@@ -82,10 +89,69 @@ function validationReason(error: ApiError): string | undefined {
 }
 
 /**
+ * Turns an API field path into the label the admin is looking at, so a
+ * refusal points at a field on screen rather than at `addresses.0.zip`.
+ * Unknown paths keep their own name - wrong-looking, but still a lead.
+ */
+async function fieldLabeller(locale: Locale) {
+  const t = await getTranslations({ locale, namespace: "club" });
+
+  const clubFields: Record<string, string> = {
+    name: t("fields.name"),
+    shortName: t("fields.short"),
+    establishedDate: t("fields.established"),
+    activityIds: t("fields.activity"),
+    active: t("fields.active"),
+    avatar: t("fields.avatar"),
+  };
+
+  const addressFields: Record<string, string> = {
+    name: t("setup.address.name"),
+    shortName: t("fields.short"),
+    streetName: t("setup.address.streetName"),
+    streetNumber: t("setup.address.streetNumber"),
+    zip: t("setup.address.zip"),
+    city: t("setup.address.city"),
+    region: t("setup.address.region"),
+    directions: t("setup.address.directions"),
+    active: t("fields.active"),
+  };
+
+  return (path: string): string => {
+    // `addresses[0].zip` and `addresses.0.zip` name the same field.
+    const [head = "", ...rest] = path
+      .replace(/\[(\d+)\]/g, ".$1")
+      .split(".")
+      .filter(Boolean);
+
+    if (head === "addresses" && rest.length > 0) {
+      const number = Number(rest[0]) + 1;
+      if (!Number.isFinite(number)) return path;
+
+      const heading = t("setup.address.heading", { number });
+      // An unlabelled sub-field keeps its own name rather than being dropped.
+      const field = addressFields[rest[1] ?? ""] ?? rest[1];
+
+      return field ? `${heading} · ${field}` : heading;
+    }
+
+    if (head === "languages") {
+      const rank = Number(rest[0]) === 0 ? t("fields.primary") : t("fields.secondary");
+      return `${t("fields.language")} · ${rank}`;
+    }
+
+    return clubFields[head] ?? path;
+  };
+}
+
+/**
  * Pulls `field: message` out of whichever shape the API's validator used.
  * Covers a plain string, an issue array, and Zod's flattened object.
  */
-function fieldMessages(details: unknown): string[] {
+function fieldMessages(
+  details: unknown,
+  label: (path: string) => string,
+): string[] {
   if (typeof details === "string") return details.trim() ? [details] : [];
 
   if (Array.isArray(details)) {
@@ -102,7 +168,9 @@ function fieldMessages(details: unknown): string[] {
         ? row.path.join(".")
         : [row.param, row.field].find((v) => typeof v === "string");
 
-      return [typeof field === "string" && field ? `${field}: ${text}` : text];
+      return [
+        typeof field === "string" && field ? `${label(field)}: ${text}` : text,
+      ];
     });
   }
 
@@ -111,15 +179,15 @@ function fieldMessages(details: unknown): string[] {
 
     // Zod's flattened form keeps the per-field half under `fieldErrors`.
     if (flat.fieldErrors && typeof flat.fieldErrors === "object") {
-      const fields = fieldMessages(flat.fieldErrors);
+      const fields = fieldMessages(flat.fieldErrors, label);
 
-      return fields.length > 0 ? fields : fieldMessages(flat.formErrors);
+      return fields.length > 0 ? fields : fieldMessages(flat.formErrors, label);
     }
 
     return Object.entries(flat).flatMap(([field, value]) =>
       (Array.isArray(value) ? value : [value])
         .filter((text): text is string => typeof text === "string")
-        .map((text) => `${field}: ${text}`),
+        .map((text) => `${label(field)}: ${text}`),
     );
   }
 

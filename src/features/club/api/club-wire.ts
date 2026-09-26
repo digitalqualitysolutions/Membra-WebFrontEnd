@@ -234,9 +234,21 @@ export const newAddressSchema = z.object({
   zip: z.string().min(1).max(14),
   city: z.string().min(1).max(100),
   region: z.string().max(100).nullable(),
+  /** ISO-3166-1 alpha-2, uppercase. Required upstream, though nothing asks
+      for it on screen yet - see `DEFAULT_COUNTRY_CODE`. */
+  countryCode: z.string().regex(/^[A-Z]{2}$/),
   directions: z.string().max(255).nullable(),
   active: z.boolean(),
 });
+
+/**
+ * The country every address is created in until the form asks for one.
+ *
+ * The API requires `countryCode` on each address and refuses the whole club
+ * without it. No field collects it, so it's fixed here rather than guessed
+ * per address - one place to change the day a club outside Denmark signs up.
+ */
+export const DEFAULT_COUNTRY_CODE = "DK";
 
 /**
  * What `POST /clubs` accepts, before it's flattened into multipart.
@@ -369,6 +381,7 @@ export function toNewClubAddress(values: {
     city: values.city.trim(),
     // Empty optional fields go up as null, not as "".
     region: values.region.trim() || null,
+    countryCode: DEFAULT_COUNTRY_CODE,
     directions: values.directions.trim() || null,
     active: true,
   };

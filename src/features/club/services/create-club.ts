@@ -15,13 +15,13 @@ import {
   toNewClubAddress,
   type CreateClubRequest,
 } from "@/features/club/api/club-wire";
+import { clubFailure } from "@/features/club/services/club-errors";
 import type {
   CreateClubPayload,
   CreateClubState,
 } from "@/features/club/services/state";
 import { createPhotoSchema } from "@/features/onboarding/schemas";
 import { dayMonthYearToIso } from "@/lib/date";
-import { ApiError, NetworkError } from "@/lib/http/api-error";
 
 /**
  * Create the admin's club.
@@ -79,34 +79,11 @@ export async function createClubAction(
 
     return { club: toClubDetails(club) };
   } catch (error) {
-    if (error instanceof NetworkError) {
-      console.error("[create-club] upstream unreachable", error.cause);
-      return { formError: tErrors("network") };
-    }
-
-    if (ApiError.isApiError(error)) {
-      if (error.status === 401) redirect(`/${locale}/login`);
-      if (error.status === 429) return { formError: tErrors("rateLimited") };
-
-      console.error(`[create-club] ${error.code}: ${error.message}`, error.details);
-
-      // A clash with a club that already exists - most likely the short code.
-      if (error.status === 409) return { formError: tErrors("clubConflict") };
-
-      /*
-       * The API turned a value down. Its message is the only thing that says
-       * which one ("One or more activityIds are invalid"), so it's passed on
-       * - in English, since the API writes it, but far more use than a
-       * generic "try again" that can't be acted on.
-       */
-      if (error.status === 400) {
-        return { formError: tErrors("clubRejected", { reason: error.message }) };
-      }
-
-      return { formError: tErrors("unexpected") };
-    }
-
-    throw error;
+    // The same ladder every club call answers a failure with; a 400 here names
+    // the fields the API refused rather than just "Validation failed".
+    return {
+      formError: await clubFailure(error, locale, "create-club", "clubRejected"),
+    };
   }
 }
 
