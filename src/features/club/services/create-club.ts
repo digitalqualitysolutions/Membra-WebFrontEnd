@@ -93,7 +93,7 @@ export async function createClubAction(
  */
 function toRequest(payload: CreateClubPayload): CreateClubRequest | null {
   const establishedDate = dayMonthYearToIso(payload.establishedDate);
-  if (!establishedDate || payload.languageIds.length === 0) return null;
+  if (!establishedDate) return null;
 
   return {
     name: payload.name.trim(),

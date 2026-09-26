@@ -268,12 +268,11 @@ export function AddLocationPanel({
         </button>
       </header>
 
-      <div className="overflow-x-auto border-t border-line px-5 py-4 sm:px-6">
-        {/* `w-max` rather than a guessed min-width: the row is exactly as wide
-            as the fields need and scrolls from there, so no column has to be
-            squeezed to make an invented total fit. */}
-        <div className="flex w-max items-end gap-4">
-          <Field label={t("name")} className="w-56">
+      <div className="border-t border-line px-5 py-4 sm:px-6">
+        {/* Wraps rather than scrolling: a field that doesn't fit the width
+            takes the next line, so nothing is hidden off the right edge. */}
+        <div className="flex flex-wrap items-end gap-4">
+          <Field label={t("name")} className="w-full grow sm:w-56">
             <Input
               className={compact}
               value={name}
@@ -299,7 +298,7 @@ export function AddLocationPanel({
 
           {/* A site makes it a root node; a parent location makes it a child
               that inherits one. Picking either rules the other out. */}
-          <Field label={t("parentSite")} className="w-64">
+          <Field label={t("parentSite")} className="w-full grow sm:w-64">
             <Choice
               value={site}
               onChange={pickSite}
@@ -313,7 +312,7 @@ export function AddLocationPanel({
             />
           </Field>
 
-          <Field label={t("parentLocation")} className="w-48">
+          <Field label={t("parentLocation")} className="w-full grow sm:w-48">
             <Choice
               value={parent}
               onChange={pickParent}
@@ -374,6 +373,14 @@ export function AddLocationPanel({
             </Control>
           </Field>
 
+          <Field label={t("inGroups")} className="w-36">
+            {/* Read-only: groups are built on their own screen, out of
+                locations that already exist, so there is nothing to join yet. */}
+            <Control>
+              <span className="text-[13px] text-subtle">{t("none")}</span>
+            </Control>
+          </Field>
+
           <Field label={t("active")} className="w-20">
             <Control>
               <Switch
@@ -382,14 +389,6 @@ export function AddLocationPanel({
                 label={t("active")}
                 tone="success"
               />
-            </Control>
-          </Field>
-
-          <Field label={t("inGroups")} className="w-36">
-            {/* Read-only: groups are built on their own screen, out of
-                locations that already exist, so there is nothing to join yet. */}
-            <Control>
-              <span className="text-[13px] text-subtle">{t("none")}</span>
             </Control>
           </Field>
 

@@ -260,15 +260,13 @@ export const createClubRequestSchema = z.object({
   shortName: z.string().min(1).max(10),
   establishedDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   activityIds: z.array(z.number().int().positive()),
-  /** Rank 1 is primary. Ranks must be unique per club. */
-  languages: z
-    .array(
-      z.object({
-        languageId: z.string().min(1).max(15),
-        rank: z.number().int().positive(),
-      }),
-    )
-    .min(1),
+  /** Rank 1 is primary. Ranks must be unique per club. Optional upstream. */
+  languages: z.array(
+    z.object({
+      languageId: z.string().min(1).max(15),
+      rank: z.number().int().positive(),
+    }),
+  ),
   /** The first is the primary one - the API ignores any `primary` flag. */
   addresses: z.array(newAddressSchema).min(1),
 });

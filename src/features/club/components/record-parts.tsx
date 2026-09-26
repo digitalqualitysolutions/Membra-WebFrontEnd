@@ -68,15 +68,18 @@ export function Cell({
   label,
   editLabel,
   onEdit,
+  className,
   children,
 }: {
   label: string;
   editLabel?: string;
   onEdit?: () => void;
+  /** For a field that needs more than one of the grid's columns. */
+  className?: string;
   children: ReactNode;
 }) {
   return (
-    <div className="min-w-0">
+    <div className={cn("min-w-0", className)}>
       {/* Holds the pencil's own height whether or not this cell has one, so a
           field without one doesn't pull its value up a few pixels and break
           the row's baseline. */}

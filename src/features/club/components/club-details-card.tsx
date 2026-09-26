@@ -166,8 +166,8 @@ export function ClubDetailsCard({
     name: values.name.trim().length > 0,
     short: values.short.trim().length > 0,
     established: dayMonthYearToIso(values.established) !== null,
-    activityIds: true,
-    languageIds: chosenLanguageIds(values.languageIds).length > 0,
+    activityIds: values.activityIds.length > 0,
+    languageIds: true,
     avatar: true,
   };
 
@@ -458,6 +458,9 @@ export function ClubDetailsCard({
           label={t("fields.language")}
           editLabel={t("details.editField", { field: t("fields.language") })}
           onEdit={() => toggle({ kind: "field", field: "languageIds" })}
+          // A language row is a select, a rank and a button; one column of four
+          // isn't enough for that at laptop width.
+          className="sm:col-span-2"
         >
           {editing("languageIds") ? (
             <LanguageFields

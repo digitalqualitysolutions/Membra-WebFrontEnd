@@ -228,7 +228,6 @@ async function saveDetails(
   }
 
   if (details.languages !== undefined) {
-    if (details.languages.length === 0) return ours("primary language");
     patch.languages = toLanguageRanks(details.languages);
   }
 

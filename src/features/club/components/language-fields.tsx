@@ -67,7 +67,7 @@ export function LanguageFields({
         return (
           // Keyed by position: a slot holds nothing of its own.
           <div key={index} className="flex flex-wrap items-center gap-2">
-            <div className="min-w-48 flex-1">
+            <div className="w-full min-w-0 sm:w-auto sm:min-w-48 sm:flex-1">
               <LanguageSelect
                 value={id}
                 onChange={(next) => choose(index, next)}
@@ -85,10 +85,10 @@ export function LanguageFields({
               />
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {/* Holds its width with no button in it, so every row's remove
-                  sits on the same edge. */}
-              <div className="flex min-w-40 items-center gap-2">
+                  sits on the same edge - only where there's room for it. */}
+              <div className="flex min-w-0 items-center gap-2 sm:min-w-40">
                 {/* Nothing picked yet is nothing to rank. */}
                 {typeof id === "string" ? (
                   <Chip tone={primary ? "success" : "neutral"}>{rank}</Chip>
