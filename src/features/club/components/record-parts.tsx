@@ -301,18 +301,8 @@ export function CardHeader({
 }
 
 /**
- * What a `Select` holds for "no language": Radix won't take an empty value.
- * Underscored so it can't collide with a real language code.
- */
-const NO_LANGUAGE = "__none__";
-
-/**
- * One of the club's language slots, picked from the API's list.
- *
- * Holds the language's id - that's what the API takes. The optional slot
- * offers "none" first, so a secondary language can be left out or taken back.
- * `exclude` keeps the other slot's choice out of the list: a club can't list
- * the same language twice.
+ * One of the club's language slots, picked from the API's list. Holds the
+ * id - that's what the API takes. `exclude` is what the other slots hold.
  */
 export function LanguageSelect({
   value,
@@ -321,26 +311,25 @@ export function LanguageSelect({
   label,
   placeholder,
   unavailableLabel,
-  noneLabel,
-  exclude = null,
+  exclude = [],
 }: {
   value: string | null;
-  onChange: (value: string | null) => void;
+  onChange: (value: string) => void;
   languages: readonly ClubLanguageOption[];
   label: string;
   placeholder: string;
   unavailableLabel: string;
-  /** Given for an optional slot, which can then be set back to nothing. */
-  noneLabel?: string;
-  exclude?: string | null;
+  exclude?: readonly string[];
 }) {
   const unavailable = languages.length === 0;
-  const offered = languages.filter((language) => language.id !== exclude);
+  const offered = languages.filter(
+    (language) => !exclude.includes(language.id),
+  );
 
   return (
     <Select
-      value={value === null ? (noneLabel ? NO_LANGUAGE : "") : value}
-      onValueChange={(next) => onChange(next === NO_LANGUAGE ? null : next)}
+      value={value ?? ""}
+      onValueChange={onChange}
       disabled={unavailable}
     >
       <SelectTrigger
@@ -353,10 +342,6 @@ export function LanguageSelect({
       </SelectTrigger>
 
       <SelectContent>
-        {noneLabel ? (
-          <SelectItem value={NO_LANGUAGE}>{noneLabel}</SelectItem>
-        ) : null}
-
         {offered.map((language) => (
           <SelectItem key={language.id} value={language.id}>
             {language.name}

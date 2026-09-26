@@ -53,6 +53,13 @@ export type RequestInit_ = {
    */
   body?: unknown;
   headers?: Record<string, string>;
+  /**
+   * Seconds to keep the answer for. Catalogues only - anything a member owns
+   * stays uncached, so a save is visible on the next read.
+   */
+  revalidate?: number;
+  /** Names to drop it by, for `revalidateTag`. Needs `revalidate`. */
+  tags?: readonly string[];
 };
 
 export type ApiResponse<T> = {
@@ -114,7 +121,7 @@ export async function api<T>(
   path: string,
   init: RequestInit_ = {},
 ): Promise<ApiResponse<T>> {
-  const { method = "GET", body, headers = {} } = init;
+  const { method = "GET", body, headers = {}, revalidate, tags } = init;
 
   /*
    * Multipart is the one body we leave alone. `fetch` writes its own
@@ -139,8 +146,11 @@ export async function api<T>(
         ? {}
         : { body: multipart ? (body as FormData) : JSON.stringify(body) }),
       signal: AbortSignal.timeout(env.API_TIMEOUT_MS),
-      // Anything behind a session is per-request by definition.
-      cache: "no-store",
+      // Anything behind a session is per-request by definition; a catalogue
+      // that asked to be kept is the exception.
+      ...(revalidate === undefined
+        ? { cache: "no-store" as const }
+        : { next: { revalidate, tags: tags ? [...tags] : undefined } }),
     });
   } catch (cause) {
     throw new NetworkError("The Membra API could not be reached", { cause });

@@ -2,6 +2,7 @@
 
 import { format, parseISO } from "date-fns";
 import { useLocale, useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { Icon } from "@/components/icons";
@@ -14,12 +15,14 @@ import type {
 import { ActivityPicker } from "@/features/club/components/activity-picker";
 import { ClampedNames } from "@/features/club/components/clamped-names";
 import { usePhotoCropLabels } from "@/features/onboarding/components/crop-dialog";
-import { Tagged } from "@/features/club/components/form-field";
+import {
+  LanguageFields,
+  chosenLanguageIds,
+} from "@/features/club/components/language-fields";
 import {
   Cell,
   ClubAvatar,
   ClubAvatarPicker,
-  LanguageSelect,
   PencilButton,
   SaveBar,
   Switch,
@@ -56,12 +59,8 @@ function valuesOf(club: ClubDetails): ClubFormValues {
     // which have no ISO form, so the conversion happens at the two ends.
     established: fromIsoDate(club.established),
     activityIds: club.activityIds,
-    primaryLanguageId:
-      club.languages.find((language) => language.rank === "primary")?.id ??
-      null,
-    secondaryLanguageId:
-      club.languages.find((language) => language.rank === "secondary")?.id ??
-      null,
+    // Already primary first, the way `toClubDetails` ranks them.
+    languageIds: club.languages.map((language) => language.id),
     active: club.active,
     avatar: club.avatar,
   };
@@ -98,6 +97,7 @@ export function ClubDetailsCard({
 }) {
   const t = useTranslations("club");
   const locale = useLocale();
+  const router = useRouter();
   const cropLabels = usePhotoCropLabels();
 
   const [mode, setMode] = useState<Mode>({ kind: "read" });
@@ -167,8 +167,7 @@ export function ClubDetailsCard({
     short: values.short.trim().length > 0,
     established: dayMonthYearToIso(values.established) !== null,
     activityIds: true,
-    primaryLanguageId: values.primaryLanguageId !== null,
-    secondaryLanguageId: true,
+    languageIds: chosenLanguageIds(values.languageIds).length > 0,
     avatar: true,
   };
 
@@ -207,10 +206,7 @@ export function ClubDetailsCard({
    * sends no details at all, just the file, if one was picked.
    */
   function detailsChange(): ClubDetailsChange | null {
-    const languages = {
-      primaryLanguageId: values.primaryLanguageId,
-      secondaryLanguageId: values.secondaryLanguageId,
-    };
+    const languages = chosenLanguageIds(values.languageIds);
 
     if (mode.kind === "section") {
       return {
@@ -235,8 +231,7 @@ export function ClubDetailsCard({
         return { establishedDate: values.established, avatar: null };
       case "activityIds":
         return { activityIds: values.activityIds, avatar: null };
-      case "primaryLanguageId":
-      case "secondaryLanguageId":
+      case "languageIds":
         return { languages, avatar: null };
       case "avatar":
         return avatarFile ? { avatar: avatarFile } : null;
@@ -273,6 +268,9 @@ export function ClubDetailsCard({
 
       reset(result.club ?? club);
       setMode({ kind: "read" });
+
+      // Re-fetch the data so the card shows what the API now holds.
+      router.refresh();
     });
   }
 
@@ -459,41 +457,18 @@ export function ClubDetailsCard({
         <Cell
           label={t("fields.language")}
           editLabel={t("details.editField", { field: t("fields.language") })}
-          onEdit={() => toggle({ kind: "field", field: "primaryLanguageId" })}
+          onEdit={() => toggle({ kind: "field", field: "languageIds" })}
         >
-          {editing("primaryLanguageId") || editing("secondaryLanguageId") ? (
-            // The API's own list, as in setup. Stacked here: the cell is one
-            // column wide, too narrow for the pair side by side.
-            <div className="flex flex-col gap-2">
-              <Tagged tag={t("fields.primary")}>
-                <LanguageSelect
-                  value={values.primaryLanguageId}
-                  onChange={(value) => setField("primaryLanguageId", value)}
-                  languages={languages}
-                  exclude={values.secondaryLanguageId}
-                  label={`${t("fields.language")} (${t("fields.primary")})`}
-                  placeholder={t("setup.languagePlaceholder")}
-                  unavailableLabel={t("fields.languagesUnavailable")}
-                />
-              </Tagged>
-
-              <Tagged tag={t("fields.secondary")}>
-                <LanguageSelect
-                  value={values.secondaryLanguageId}
-                  onChange={(value) => setField("secondaryLanguageId", value)}
-                  languages={languages}
-                  exclude={values.primaryLanguageId}
-                  label={`${t("fields.language")} (${t("fields.secondary")})`}
-                  placeholder={t("setup.noLanguage")}
-                  noneLabel={t("setup.noLanguage")}
-                  unavailableLabel={t("fields.languagesUnavailable")}
-                />
-              </Tagged>
-            </div>
+          {editing("languageIds") ? (
+            <LanguageFields
+              slots={values.languageIds}
+              onChange={(slots) => setField("languageIds", slots)}
+              languages={languages}
+            />
           ) : club.languages.length > 0 ? (
             <div className="flex flex-col gap-1">
               {club.languages.map((language) => (
-                <div key={language.rank} className="flex items-baseline gap-2">
+                <div key={language.id} className="flex items-baseline gap-2">
                   <Value>{language.name}</Value>
                   <span className="text-[12px] text-body italic">
                     {t(`fields.${language.rank}`)}

@@ -1,7 +1,6 @@
 import type { useTranslations } from "next-intl";
 import { z } from "zod";
 
-import { locales } from "@/config/locales";
 import { parseDayMonthYear } from "@/lib/date";
 
 /**
@@ -58,20 +57,6 @@ function dateOfBirthField(t: Translate) {
 }
 
 /**
- * A choice from a fixed list.
- *
- * The `string` in front of the enum is what lets the control start empty. With
- * the enum alone the field types as already-answered, and an untouched select
- * wouldn't typecheck as a form value.
- */
-function choiceField<const Values extends readonly [string, ...string[]]>(
-  values: Values,
-  message: string,
-) {
-  return z.string().min(1, message).pipe(z.enum(values, message));
-}
-
-/**
  * A gender out of the list the member was actually offered.
  *
  * Not `choiceField`, because that needs its values at the time the module is
@@ -88,14 +73,27 @@ function genderField(t: Translate, genders: readonly string[]) {
     .refine((value) => offered.has(value), t("genderRequired"));
 }
 
+/** A language out of the catalogue the member was actually offered. */
+function languageField(t: Translate, languages: readonly string[]) {
+  const offered = new Set(languages);
+
+  return z
+    .string()
+    .min(1, t("languageRequired"))
+    .refine((value) => offered.has(value), t("languageRequired"));
+}
+
 /**
  * @param genders what the gender field will accept, from `availableGenders()`.
  *   Defaults to the built-in list so a caller with nothing fetched still gets a
  *   working schema rather than one that rejects every gender.
+ * @param languages the catalogue ids the language field will accept. No
+ *   built-in fallback: there is no honest guess at another table's row ids.
  */
 export function createProfileSchema(
   t: Translate,
   genders: readonly string[] = genderCategories,
+  languages: readonly string[] = [],
 ) {
   return z.object({
     firstName: nameField(t, t("firstNameRequired")),
@@ -105,8 +103,8 @@ export function createProfileSchema(
     nickname: nameField(t, t("nicknameRequired")),
     dateOfBirth: dateOfBirthField(t),
     genderCategory: genderField(t, genders),
-    // Language the club writes to this member in.
-    preferredLanguage: choiceField(locales, t("languageRequired")),
+    // Language the club writes to this member in, from `GET /reference/languages`.
+    preferredLanguage: languageField(t, languages),
     // Consent is the lawful basis for storing any of the above, which makes it
     // the one box that has to be ticked rather than just offered.
     consentStorage: z.boolean().refine(Boolean, t("consentStorageRequired")),

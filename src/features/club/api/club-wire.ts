@@ -48,7 +48,7 @@ export function toClubActivities(
   return response.activities.map((row) => ({ id: row.id, name: row.activity }));
 }
 
-/** One row of `GET /clubs/languages`. The id is a code - `da`, `en-US`. */
+/** One row of `GET /reference/languages`. The id is a code - `da`, `en-US`. */
 const languageSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
@@ -65,13 +65,11 @@ export type ClubLanguageOption = {
   name: string;
 };
 
-/** Active ones only: offering a retired language would be refused on save. */
+/** Whatever the catalogue lists - it already serves the active rows only. */
 export function toClubLanguages(
   response: z.infer<typeof languagesResponseSchema>,
 ): ClubLanguageOption[] {
-  return response.languages
-    .filter((row) => row.active)
-    .map((row) => ({ id: row.id, name: row.name }));
+  return response.languages.map((row) => ({ id: row.id, name: row.name }));
 }
 
 /* ------------------------------------------------------------------------ */
@@ -342,23 +340,15 @@ export type AddAddressRequest = z.infer<typeof addAddressRequestSchema>;
 /* From form values                                                          */
 /* ------------------------------------------------------------------------ */
 
-/**
- * A club's two language slots as the API's ranked list.
- *
- * Rank 1 is primary. The secondary is left out when empty or when it repeats
- * the primary - the API wants ranks unique, and the same language twice would
- * say nothing new.
- */
+/** A club's languages as the API's ranked list: first in, rank 1, the primary. */
 export function toLanguageRanks(
-  primaryId: string,
-  secondaryId: string | null,
+  ids: readonly string[],
 ): CreateClubRequest["languages"] {
-  return [
-    { languageId: primaryId, rank: 1 },
-    ...(secondaryId !== null && secondaryId !== primaryId
-      ? [{ languageId: secondaryId, rank: 2 }]
-      : []),
-  ];
+  // De-duplicated: the picker can't offer a repeat, but the network can.
+  return [...new Set(ids)].map((languageId, index) => ({
+    languageId,
+    rank: index + 1,
+  }));
 }
 
 /** An address as the form holds it, trimmed into what the API takes. */

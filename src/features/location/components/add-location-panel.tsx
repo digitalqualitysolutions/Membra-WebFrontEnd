@@ -1,6 +1,7 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import type { ReactNode } from "react";
 
@@ -104,6 +105,7 @@ export function AddLocationPanel({
 }) {
   const t = useTranslations("location.form");
   const locale = useLocale();
+  const router = useRouter();
 
   /** Why the API turned the location down, already in the member's language. */
   const [failure, setFailure] = useState<string | null>(null);
@@ -243,6 +245,9 @@ export function AddLocationPanel({
       });
 
       onClose();
+
+      // Re-fetch the data so the table shows what the API now holds.
+      router.refresh();
     });
   }
 

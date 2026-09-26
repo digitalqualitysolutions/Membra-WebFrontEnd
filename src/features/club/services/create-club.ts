@@ -93,7 +93,7 @@ export async function createClubAction(
  */
 function toRequest(payload: CreateClubPayload): CreateClubRequest | null {
   const establishedDate = dayMonthYearToIso(payload.establishedDate);
-  if (!establishedDate || payload.primaryLanguageId === null) return null;
+  if (!establishedDate || payload.languageIds.length === 0) return null;
 
   return {
     name: payload.name.trim(),
@@ -101,10 +101,7 @@ function toRequest(payload: CreateClubPayload): CreateClubRequest | null {
     establishedDate,
     // De-duplicated: the picker can't produce a repeat, but the network can.
     activityIds: [...new Set(payload.activityIds)],
-    languages: toLanguageRanks(
-      payload.primaryLanguageId,
-      payload.secondaryLanguageId,
-    ),
+    languages: toLanguageRanks(payload.languageIds),
     // In the order the admin entered them: the API makes the first primary.
     addresses: payload.addresses.map(toNewClubAddress),
   };

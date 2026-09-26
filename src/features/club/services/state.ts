@@ -35,9 +35,8 @@ export type CreateClubPayload = {
   /** Day-first `DD / MM / YYYY`, as the field holds it. */
   establishedDate: string;
   activityIds: number[];
-  /** Language codes - `da`, `en-US` - not numbers. */
-  primaryLanguageId: string | null;
-  secondaryLanguageId: string | null;
+  /** Language codes - `da`, `en-US` - not numbers. The first is the primary one. */
+  languageIds: string[];
   addresses: NewAddressValues[];
   avatar: File | null;
 };
@@ -64,11 +63,8 @@ export type ClubDetailsChange = {
   establishedDate?: string;
   active?: boolean;
   activityIds?: number[];
-  /** Both slots together: the API takes the club's languages as one list. */
-  languages?: {
-    primaryLanguageId: string | null;
-    secondaryLanguageId: string | null;
-  };
+  /** The whole list at once, primary first - the API takes it that way. */
+  languages?: string[];
   /** A new logo, or `null` to leave the current one alone. */
   avatar: File | null;
 };

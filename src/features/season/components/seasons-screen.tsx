@@ -1,6 +1,7 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState, useTransition } from "react";
 import type { ReactNode } from "react";
 
@@ -29,6 +30,7 @@ import type {
 } from "@/features/season/services/season-state";
 import type { SeasonRow, SeasonToggle } from "@/features/season/types";
 import { dayMonthYearToIso, fromIsoDate } from "@/lib/date";
+import { useServerSync } from "@/lib/use-server-sync";
 import { cn } from "@/lib/utils";
 
 /** The on/off columns, in the order the table shows them. */
@@ -149,6 +151,7 @@ export function SeasonsScreen({
 }) {
   const t = useTranslations("season");
   const locale = useLocale();
+  const router = useRouter();
 
   const [seasons, setSeasons] = useState(saved);
   const [rows, setRows] = useState(() => saved.map(toDraft));
@@ -174,6 +177,10 @@ export function SeasonsScreen({
 
   /** The row whose text fields are open for typing, from its pencil. */
   const [typing, setTyping] = useState<string | null>(null);
+
+  // Fresh rows once a save re-reads the page. Held back while the table is
+  // open, so a refresh can't take a half-typed season away.
+  useServerSync(saved, editing || adding, commit);
 
   /**
    * `01 May 2026` - short, unambiguous, and in the page's own language.
@@ -385,6 +392,9 @@ export function SeasonsScreen({
 
       setTyping(null);
       setEditing(false);
+
+      // Re-fetch the data so the table shows what the API now holds.
+      router.refresh();
     });
   }
 

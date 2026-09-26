@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { defaultLocale, isLocale, type Locale } from "@/config/locales";
 import { parseDayMonthYear, toIsoDate } from "@/lib/date";
 import type { ProfileFormValues } from "@/features/onboarding/types";
 
@@ -87,6 +88,19 @@ export function toPreferredLang(
   );
 
   return regional?.id ?? null;
+}
+
+/**
+ * The locale a catalogue id renders in: `en-US` and `en-GB` both read `en`.
+ *
+ * The preferred language decides which prefix the app navigates to, and only
+ * the portal's own locales have routes. A language it doesn't speak yet falls
+ * back to the default rather than redirecting to a URL that isn't there.
+ */
+export function toAppLocale(languageId: string): Locale {
+  const [base = ""] = languageId.toLowerCase().split("-");
+
+  return isLocale(base) ? base : defaultLocale;
 }
 
 /**

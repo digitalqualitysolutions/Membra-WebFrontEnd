@@ -8,8 +8,8 @@ import { isLocale } from "@/config/locales";
 import { readSessionToken } from "@/features/auth/server/session-cookie";
 import { completeProfile } from "@/features/onboarding/api/profile-endpoints";
 import {
+  toAppLocale,
   toCompleteProfileRequest,
-  toPreferredLang,
 } from "@/features/onboarding/api/profile-wire";
 import { createProfileSchema } from "@/features/onboarding/schemas";
 import {
@@ -47,9 +47,12 @@ export async function updateProfileAction(
 
   // Against the same list the form was given, not a copy of it: the page
   // deduped this call, so it's the very same answer.
+  const languages = await languageList();
+
   const parsed = createProfileSchema(
     tValidation,
     await availableGenders(),
+    languages.map((row) => row.id),
   ).safeParse(values);
 
   if (!parsed.success) {
@@ -61,16 +64,7 @@ export async function updateProfileAction(
   const token = await readSessionToken();
   if (!token) redirect(`/${locale}/login`);
 
-  const languages = await languageList();
-
-  if (!toPreferredLang(parsed.data.preferredLanguage, languages)) {
-    console.error(
-      `[update-profile] no language id for "${parsed.data.preferredLanguage}" in [${languages
-        .map((row) => row.id)
-        .join(", ")}]`,
-    );
-  }
-
+  // The schema already checked it against this list, so it's a row id by now.
   const body = toCompleteProfileRequest(
     parsed.data,
     await genderList(),
@@ -107,7 +101,8 @@ export async function updateProfileAction(
     throw error;
   }
 
-  const chosen = parsed.data.preferredLanguage;
+  // The prefix the chosen language reads in - `en-US` and `en-GB` both `en`.
+  const chosen = toAppLocale(parsed.data.preferredLanguage);
 
   /*
    * The header greets the member by name and the home page repeats it, both

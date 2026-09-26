@@ -12,6 +12,7 @@ import type { ClubAddress } from "@/features/club/types";
 import { AddLocationPanel } from "@/features/location/components/add-location-panel";
 import { LocationHelp } from "@/features/location/components/location-help";
 import type { LocationRow } from "@/features/location/types";
+import { useServerSync } from "@/lib/use-server-sync";
 import { cn } from "@/lib/utils";
 
 /**
@@ -92,10 +93,12 @@ export function LocationsOverviewTable({
 }) {
   const t = useTranslations("location");
 
-  // PLACEHOLDER, like the rest of the app: a created location lands in state
-  // here so the table can show it, and goes no further.
   const [locations, setLocations] = useState(saved);
   const [adding, setAdding] = useState(false);
+
+  // Read-only, so there's no draft to protect: whatever the server last sent
+  // wins over the row a create merged in locally.
+  useServerSync(saved, false, setLocations);
 
   /** The two letters every on/off column reads as, resolved once for all of them. */
   const yes = t("yes");

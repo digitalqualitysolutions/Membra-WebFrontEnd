@@ -58,6 +58,15 @@ const withSession = (sessionToken: string) => ({
 export const segment = (id: number) => encodeURIComponent(String(id));
 
 /**
+ * How a `/reference` list is read: kept for an hour under one tag.
+ *
+ * These are the API's own tables - languages, activities, genders - not a
+ * club's data. They change when someone edits the database, so an hour stale
+ * costs nothing, and `revalidateTag("reference")` drops them on demand.
+ */
+export const catalogue = { revalidate: 3600, tags: ["reference"] } as const;
+
+/**
  * The activities a club can be registered for.
  *
  * `cache` dedupes it for one request: the card and the setup form both want
@@ -70,6 +79,7 @@ export const listActivities = cache(async function listActivities(
   // Under `/reference`, not `/clubs`: it's a catalogue, not a club's own data.
   const { data } = await api(activitiesResponseSchema, "/reference/activities", {
     headers: withSession(sessionToken),
+    ...catalogue,
   });
 
   return toClubActivities(data);
@@ -79,8 +89,9 @@ export const listActivities = cache(async function listActivities(
 export const listLanguages = cache(async function listLanguages(
   sessionToken: string,
 ): Promise<ClubLanguageOption[]> {
-  const { data } = await api(languagesResponseSchema, "/clubs/languages", {
+  const { data } = await api(languagesResponseSchema, "/reference/languages", {
     headers: withSession(sessionToken),
+    ...catalogue,
   });
 
   return toClubLanguages(data);

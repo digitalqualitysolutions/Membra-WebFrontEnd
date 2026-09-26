@@ -228,9 +228,8 @@ async function saveDetails(
   }
 
   if (details.languages !== undefined) {
-    const { primaryLanguageId, secondaryLanguageId } = details.languages;
-    if (primaryLanguageId === null) return ours("primary language");
-    patch.languages = toLanguageRanks(primaryLanguageId, secondaryLanguageId);
+    if (details.languages.length === 0) return ours("primary language");
+    patch.languages = toLanguageRanks(details.languages);
   }
 
   const parsed = clubPatchSchema.safeParse(patch);

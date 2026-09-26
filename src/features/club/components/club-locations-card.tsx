@@ -1,6 +1,7 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 
 import { Icon } from "@/components/icons";
@@ -31,6 +32,7 @@ import type {
   ClubLocation,
   LocationToggle,
 } from "@/features/club/types";
+import { useServerSync } from "@/lib/use-server-sync";
 import { cn } from "@/lib/utils";
 
 /**
@@ -60,31 +62,6 @@ function descendantsOf(
   return found;
 }
 
-/**
- * Everything `id` hangs off, nearest first.
- *
- * The other half of `descendantsOf`, and what the active cascade climbs: the
- * API re-opens a closed hall when something inside it is switched on.
- */
-function ancestorsOf(
-  rows: readonly ClubLocation[],
-  id: string,
-): ClubLocation[] {
-  const byId = new Map(rows.map((row) => [row.id, row]));
-  const found: ClubLocation[] = [];
-
-  let parent = byId.get(id)?.parentLocation ?? null;
-
-  while (parent) {
-    const row = byId.get(parent);
-    if (!row) break;
-
-    found.push(row);
-    parent = row.parentLocation;
-  }
-
-  return found;
-}
 
 /** The on/off columns, in the order the table shows them. */
 const toggleColumns = [
@@ -138,6 +115,7 @@ export function ClubLocationsCard({
   const t = useTranslations("club.locations");
   const tEditing = useTranslations("club.editing");
   const locale = useLocale();
+  const router = useRouter();
 
   const [locations, setLocations] = useState(saved);
   const [rows, setRows] = useState(saved);
@@ -164,6 +142,13 @@ export function ClubLocationsCard({
 
   /** Branches folded away, by the id of the node that heads them. */
   const [folded, setFolded] = useState<readonly string[]>([]);
+
+  // Fresh rows after a save or delete re-reads the page. Held back while the
+  // table is open for editing, so a refresh can't take a draft away.
+  useServerSync(saved, editing, (fresh) => {
+    setLocations(fresh);
+    setRows(fresh);
+  });
 
   const shown = editing ? rows : locations;
 
@@ -427,6 +412,9 @@ export function ClubLocationsCard({
 
       setRenaming(null);
       setEditing(false);
+
+      // Re-fetch the data so the table shows what the API now holds.
+      router.refresh();
     });
   }
 
@@ -470,6 +458,9 @@ export function ClubLocationsCard({
       setFolded((shut) => shut.filter((id) => !gone.has(id)));
 
       setDeleteTarget(null);
+
+      // Re-fetch the data so the table shows what the API now holds.
+      router.refresh();
     });
   }
 
@@ -479,34 +470,6 @@ export function ClubLocationsCard({
     setRows((current) =>
       current.map((row) => (row.id === id ? { ...row, ...patch } : row)),
     );
-  }
-
-  /**
-   * Switch a location on or off, and everything the API will take with it.
-   *
-   * The cascade is the API's, mirrored here so the table shows what is about
-   * to be saved rather than only what was clicked. Switching a hall off closes
-   * every court inside it; switching a court on re-opens the hall it sits in,
-   * because a court inside a closed hall is a row nothing can book.
-   *
-   * The server does this again on save regardless, so the worst a stale mirror
-   * could cost is a redraw - but a table that showed a court open inside a
-   * hall it had just closed would be lying about what Save commits.
-   */
-  function setActive(id: string, checked: boolean) {
-    if (!editing) begin();
-
-    setRows((current) => {
-      const cascade = checked
-        ? ancestorsOf(current, id)
-        : descendantsOf(current, id);
-
-      const touched = new Set([id, ...cascade.map((row) => row.id)]);
-
-      return current.map((row) =>
-        touched.has(row.id) ? { ...row, active: checked } : row,
-      );
-    });
   }
 
   return (
@@ -789,11 +752,7 @@ export function ClubLocationsCard({
                           disabled={!editing}
                           label={t(`columns.${label}`)}
                           onChange={(checked) =>
-                            // Active is the one that carries other rows with
-                            // it; the rest touch only their own.
-                            key === "active"
-                              ? setActive(location.id, checked)
-                              : update(location.id, { [key]: checked })
+                            update(location.id, { [key]: checked })
                           }
                         />
                       </Td>

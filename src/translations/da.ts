@@ -118,10 +118,7 @@ export const da: Dictionary = {
       },
       languageLabel: "Foretrukkent sprog",
       languagePlaceholder: "Vælg sprog",
-      languageOptions: {
-        da: "Dansk",
-        en: "Engelsk",
-      },
+      languagesUnavailable: "Sprogene kunne ikke indlæses",
       consentStorage:
         "Samtykke til at opbevare grundlæggende sportspasdata under Nordic Guilds privatlivsramme og fælles DIF-regler.",
       submit: "Gem",
@@ -266,6 +263,10 @@ export const da: Dictionary = {
       language: "Klubsprog",
       primary: "Primær",
       secondary: "Sekundær",
+      addLanguage: "Tilføj sprog",
+      removeLanguage: "Fjern {language}",
+      setPrimary: "Gør til primær",
+      makePrimaryLanguage: "Gør {language} til det primære sprog",
       datePlaceholder: "DD / MM / ÅÅÅÅ",
       datePicker: "Åbn kalender",
       avatar: "Klubbens logo",

@@ -25,14 +25,16 @@ import {
   blankAddressValues,
   isAddressComplete,
 } from "@/features/club/components/address-fields";
+import { FormField as Field } from "@/features/club/components/form-field";
 import {
-  FormField as Field,
-  Tagged,
-} from "@/features/club/components/form-field";
+  LanguageFields,
+  chosenLanguageIds,
+  firstLanguageSlot,
+  type LanguageSlots,
+} from "@/features/club/components/language-fields";
 import {
   Chip,
   ClubAvatarPicker,
-  LanguageSelect,
   compactInput,
 } from "@/features/club/components/record-parts";
 import { createClubAction } from "@/features/club/services/create-club";
@@ -86,10 +88,8 @@ export function ClubSetup({
   const [established, setEstablished] = useState("");
   // None chosen to start. Optional: a club can be created without any.
   const [activityIds, setActivityIds] = useState<number[]>([]);
-  const [primaryLanguage, setPrimaryLanguage] = useState<string | null>(null);
-  const [secondaryLanguage, setSecondaryLanguage] = useState<string | null>(
-    null,
-  );
+  const [languageSlots, setLanguageSlots] =
+    useState<LanguageSlots>(firstLanguageSlot);
   const [avatar, setAvatar] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
@@ -134,7 +134,7 @@ export function ClubSetup({
     name.trim().length > 0 &&
     short.trim().length > 0 &&
     establishedIso !== null &&
-    primaryLanguage !== null &&
+    chosenLanguageIds(languageSlots).length > 0 &&
     addresses.length > 0 &&
     addressesComplete;
 
@@ -167,8 +167,7 @@ export function ClubSetup({
         shortName: short,
         establishedDate: established,
         activityIds,
-        primaryLanguageId: primaryLanguage,
-        secondaryLanguageId: secondaryLanguage,
+        languageIds: chosenLanguageIds(languageSlots),
         // In the order entered - the API makes the first one primary.
         addresses: addresses.map((row) => ({
           name: row.name,
@@ -264,44 +263,18 @@ export function ClubSetup({
             />
           </Field>
 
-          {/* Both slots under one label, the way the club record lists them:
-              "Club language", then each tagged with its slot. The primary is
-              required, the secondary isn't, and neither offers the language
-              the other already holds. */}
+          {/* The first language is the primary one; the rest follow it. */}
           <Field
             label={t("fields.language")}
             required
             requiredLabel={t("setup.required")}
             className="sm:col-span-2"
           >
-            {/* The same `gap-x-8` as the grid this field sits in, so the pair
-                splits exactly where the two columns it spans do. */}
-            <div className="grid gap-x-8 gap-y-2 sm:grid-cols-2">
-              <Tagged tag={t("fields.primary")}>
-                <LanguageSelect
-                  value={primaryLanguage}
-                  onChange={setPrimaryLanguage}
-                  languages={languages}
-                  exclude={secondaryLanguage}
-                  label={`${t("fields.language")} (${t("fields.primary")})`}
-                  placeholder={t("setup.languagePlaceholder")}
-                  unavailableLabel={t("fields.languagesUnavailable")}
-                />
-              </Tagged>
-
-              <Tagged tag={t("fields.secondary")}>
-                <LanguageSelect
-                  value={secondaryLanguage}
-                  onChange={setSecondaryLanguage}
-                  languages={languages}
-                  exclude={primaryLanguage}
-                  label={`${t("fields.language")} (${t("fields.secondary")})`}
-                  placeholder={t("setup.noLanguage")}
-                  noneLabel={t("setup.noLanguage")}
-                  unavailableLabel={t("fields.languagesUnavailable")}
-                />
-              </Tagged>
-            </div>
+            <LanguageFields
+              slots={languageSlots}
+              onChange={setLanguageSlots}
+              languages={languages}
+            />
           </Field>
 
           <Field label={t("fields.avatar")}>
