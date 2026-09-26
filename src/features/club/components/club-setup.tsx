@@ -86,7 +86,6 @@ export function ClubSetup({
   const [name, setName] = useState("");
   const [short, setShort] = useState("");
   const [established, setEstablished] = useState("");
-  // None chosen to start. Optional: a club can be created without any.
   const [activityIds, setActivityIds] = useState<number[]>([]);
   const [languageSlots, setLanguageSlots] =
     useState<LanguageSlots>(firstLanguageSlot);
@@ -134,7 +133,7 @@ export function ClubSetup({
     name.trim().length > 0 &&
     short.trim().length > 0 &&
     establishedIso !== null &&
-    chosenLanguageIds(languageSlots).length > 0 &&
+    activityIds.length > 0 &&
     addresses.length > 0 &&
     addressesComplete;
 
@@ -253,7 +252,11 @@ export function ClubSetup({
             />
           </Field>
 
-          <Field label={t("fields.activity")}>
+          <Field
+            label={t("fields.activity")}
+            required
+            requiredLabel={t("setup.required")}
+          >
             <ActivityPicker
               value={activityIds}
               onChange={setActivityIds}
@@ -264,12 +267,7 @@ export function ClubSetup({
           </Field>
 
           {/* The first language is the primary one; the rest follow it. */}
-          <Field
-            label={t("fields.language")}
-            required
-            requiredLabel={t("setup.required")}
-            className="sm:col-span-2"
-          >
+          <Field label={t("fields.language")} className="sm:col-span-2">
             <LanguageFields
               slots={languageSlots}
               onChange={setLanguageSlots}
