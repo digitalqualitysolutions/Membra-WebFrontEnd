@@ -128,10 +128,8 @@ export const en = {
       },
       languageLabel: "Preferred language",
       languagePlaceholder: "Select language",
-      languageOptions: {
-        da: "Danish",
-        en: "English",
-      },
+      /** When the language catalogue couldn't be read. */
+      languagesUnavailable: "Languages couldn't be loaded",
       consentStorage:
         "Consent to store basic sports pass data under Nordic Guild privacy framework and federated DIF rules.",
       submit: "Save",
@@ -300,6 +298,13 @@ export const en = {
       language: "Club language",
       primary: "Primary",
       secondary: "Secondary",
+      /** Adds an empty slot, once the primary language has been picked. */
+      addLanguage: "Add language",
+      removeLanguage: "Remove {language}",
+      /** On the button beside every language that isn't the primary one. */
+      setPrimary: "Set as primary",
+      /** The same button's full sentence, for assistive tech. */
+      makePrimaryLanguage: "Make {language} the primary language",
       /** The day-first date field, shared by setup and the club card. */
       datePlaceholder: "DD / MM / YYYY",
       datePicker: "Open calendar",

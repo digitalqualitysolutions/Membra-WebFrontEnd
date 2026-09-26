@@ -6,8 +6,8 @@ import { redirect } from "next/navigation";
 import { isLocale } from "@/config/locales";
 import { readSessionToken } from "@/features/auth/server/session-cookie";
 import {
+  toAppLocale,
   toCompleteProfileRequest,
-  toPreferredLang,
 } from "@/features/onboarding/api/profile-wire";
 import { completeProfile } from "@/features/onboarding/api/profile-endpoints";
 import type {
@@ -41,9 +41,12 @@ export async function completeProfileAction(
 
   // Against the same list the form was given, not a copy of it: the page
   // deduped this call, so it's the very same answer.
+  const offered = await languageList();
+
   const parsed = createProfileSchema(
     tValidation,
     await availableGenders(),
+    offered.map((row) => row.id),
   ).safeParse(values);
 
   if (!parsed.success) {
@@ -55,19 +58,8 @@ export async function completeProfileAction(
   const token = await readSessionToken();
   if (!token) redirect(`/${locale}/login`);
 
-  const languages = await languageList();
-
-  if (!toPreferredLang(values.preferredLanguage, languages)) {
-    // Not fatal - the locale goes up as-is below - but it's why a save would
-    // come back "Invalid preferredLang value", so it gets named here.
-    console.error(
-      `[complete-profile] no language id for "${values.preferredLanguage}" in [${languages
-        .map((row) => row.id)
-        .join(", ")}]`,
-    );
-  }
-
-  const body = toCompleteProfileRequest(values, await genderList(), languages);
+  // The schema already checked it against this list, so it's a row id by now.
+  const body = toCompleteProfileRequest(values, await genderList(), offered);
 
   if (typeof body === "string") {
     // The schema already accepted these values, so failing here is ours: a
@@ -110,5 +102,5 @@ export async function completeProfileAction(
    * On in whichever language they just asked for. The locale lives in the URL,
    * so a member who picked Danish here reads the rest of onboarding in Danish.
    */
-  redirect(`/${parsed.data.preferredLanguage}/onboarding/photo`);
+  redirect(`/${toAppLocale(parsed.data.preferredLanguage)}/onboarding/photo`);
 }

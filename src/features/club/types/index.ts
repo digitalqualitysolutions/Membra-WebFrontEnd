@@ -23,7 +23,7 @@ export type ClubAddress = {
 };
 
 export type ClubLanguage = {
-  /** The id from `GET /clubs/languages` - a code, not a number: `da`, `en-US`. */
+  /** The id from `GET /reference/languages` - a code, not a number: `da`, `en-US`. */
   id: string;
   name: string;
   rank: LanguageRank;
@@ -66,9 +66,8 @@ export type ClubFormValues = {
   established: string;
   /** Ids from `GET /reference/activities` - a club can have several. */
   activityIds: number[];
-  /** Codes from `GET /clubs/languages`. The primary one is required. */
-  primaryLanguageId: string | null;
-  secondaryLanguageId: string | null;
+  /** Codes from `GET /reference/languages`, primary first. `null` is an empty slot. */
+  languageIds: readonly (string | null)[];
   active: boolean;
   avatar: string | null;
 };

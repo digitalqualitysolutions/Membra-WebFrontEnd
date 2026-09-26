@@ -21,6 +21,7 @@ import type {
   ClubLocation,
 } from "@/features/club/types";
 import type { Loaded } from "@/lib/loaded";
+import { useServerSync } from "@/lib/use-server-sync";
 
 /**
  * Either the club, or the screen that creates one.
@@ -59,6 +60,12 @@ export function ClubScreen({
    * leave the others showing what the club looked like before the save.
    */
   const [club, setClub] = useState(saved.ok ? saved.data : null);
+
+  // A save or delete anywhere on the page re-reads the club; take it, so the
+  // three cards below don't carry on from the copy they were handed at mount.
+  useServerSync(saved, false, (fresh) => {
+    if (fresh.ok) setClub(fresh.data);
+  });
 
   /** Set only by creating one here, so a club that already existed never sees it. */
   const [justCreated, setJustCreated] = useState(false);

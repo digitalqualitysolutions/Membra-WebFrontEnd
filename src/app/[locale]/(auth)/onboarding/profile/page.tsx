@@ -9,6 +9,7 @@ import { AuthCard } from "@/features/auth/components/auth-card";
 import { ConsentBadge } from "@/features/auth/components/consent-badge";
 import { ProfileForm } from "@/features/onboarding/components/profile-form";
 import { availableGenders } from "@/features/onboarding/services/genders";
+import { languageList } from "@/features/onboarding/services/languages";
 
 export async function generateMetadata({
   params,
@@ -44,7 +45,10 @@ export default async function OnboardingProfile({
 
       <div className="mt-[clamp(0.25rem,1.5vh,1.25rem)] flex w-full justify-center">
         <AuthCard title={t("profile.title")} icon="brand" medallion="plain">
-          <ProfileForm genders={await availableGenders()} />
+          <ProfileForm
+            genders={await availableGenders()}
+            languages={await languageList()}
+          />
         </AuthCard>
       </div>
     </>

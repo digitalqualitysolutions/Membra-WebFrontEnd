@@ -13,6 +13,7 @@ import {
   availableGenders,
   genderList,
 } from "@/features/onboarding/services/genders";
+import { languageList } from "@/features/onboarding/services/languages";
 import { AvatarEditor } from "@/features/profile/components/avatar-editor";
 import { profileFormDefaults } from "@/features/profile/form-defaults";
 import { updateProfileAction } from "@/features/profile/services/update-profile";
@@ -58,9 +59,10 @@ export default async function Profile({
   // saved gender is matched against the same list the select offers. The rows
   // pair each word with the id `/users/me` reports; both reads share one
   // deduped request.
-  const [genders, genderRows] = await Promise.all([
+  const [genders, genderRows, languages] = await Promise.all([
     availableGenders(),
     genderList(),
+    languageList(),
   ]);
 
   // Same request the shell makes for the header badge, deduped - one call, two
@@ -89,7 +91,14 @@ export default async function Profile({
         <ProfileForm
           action={updateProfileAction}
           genders={genders}
-          defaults={profileFormDefaults(user, locale, genders, genderRows)}
+          languages={languages}
+          defaults={profileFormDefaults(
+            user,
+            locale,
+            genders,
+            genderRows,
+            languages,
+          )}
           // Consent belongs to creating the profile, not to editing it; it was
           // given at onboarding and still rides along in the defaults.
           showConsent={false}

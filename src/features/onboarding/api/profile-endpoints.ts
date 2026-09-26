@@ -8,6 +8,7 @@ import {
   type SessionUser,
 } from "@/features/auth/api/auth-wire";
 import { SESSION_COOKIE } from "@/features/auth/server/session-cookie";
+import { catalogue } from "@/features/club/api/club-endpoints";
 import {
   completeProfileRequestSchema,
   gendersResponseSchema,
@@ -38,7 +39,7 @@ import { api, requestBody } from "@/lib/http/api";
  * changed in between.
  */
 export const listGenders = cache(async function listGenders(): Promise<Gender[]> {
-  const { data } = await api(gendersResponseSchema, "/reference/genders");
+  const { data } = await api(gendersResponseSchema, "/reference/genders", catalogue);
 
   return toGenders(data);
 });

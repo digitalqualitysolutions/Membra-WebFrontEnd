@@ -1,6 +1,7 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 
 import { Icon } from "@/components/icons";
@@ -80,6 +81,7 @@ export function ClubAddressesCard({
 }) {
   const t = useTranslations("club");
   const locale = useLocale();
+  const router = useRouter();
 
   const [editing, setEditing] = useState(false);
   const [open, setOpen] = useState(true);
@@ -343,6 +345,9 @@ export function ClubAddressesCard({
       if (!result.formError) {
         reset(fresh);
         setEditing(false);
+
+        // Re-fetch the data so the card shows what the API now holds.
+        router.refresh();
         return;
       }
 

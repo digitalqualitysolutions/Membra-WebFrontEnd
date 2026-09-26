@@ -22,7 +22,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { defaultLocale, isLocale, locales, type Locale } from "@/config/locales";
+import { defaultLocale, isLocale, type Locale } from "@/config/locales";
+import type { ClubLanguageOption } from "@/features/club/api/club-wire";
+import { toPreferredLang } from "@/features/onboarding/api/profile-wire";
 import { completeProfileAction } from "@/features/onboarding/services/complete-profile";
 import {
   initialProfileState,
@@ -52,11 +54,17 @@ const blankValues: Omit<ProfileFormValues, "preferredLanguage"> = {
 
 /**
  * Whatever language they're reading the form in is probably the one they want
- * the club to write to them in, so start the field on the active locale instead
- * of defaulting to English.
+ * the club to write to them in, so start the field on the catalogue's row for
+ * the active locale. Empty when the catalogue has none, which leaves it unset.
  */
-function initialValuesFor(locale: Locale): ProfileFormValues {
-  return { ...blankValues, preferredLanguage: locale };
+function initialValuesFor(
+  locale: Locale,
+  languages: readonly ClubLanguageOption[],
+): ProfileFormValues {
+  return {
+    ...blankValues,
+    preferredLanguage: toPreferredLang(locale, languages) ?? "",
+  };
 }
 
 /** Two fields on one row, stacked on narrow screens. */
@@ -74,6 +82,8 @@ type ProfileFormProps = {
    * this is a client component; the built-in list stands in if it's left out.
    */
   genders?: readonly string[];
+  /** The languages to offer, from `languageList()`. Empty means unreachable. */
+  languages?: readonly ClubLanguageOption[];
   /**
    * The profile as it stands. Leave it out for a member who hasn't got one -
    * the fields start blank and the language follows the switcher.
@@ -112,6 +122,7 @@ type ProfileFormProps = {
 export function ProfileForm({
   action = completeProfileAction,
   genders = genderCategories,
+  languages = [],
   defaults,
   showConsent = true,
   submitIcon = "submitArrow",
@@ -126,9 +137,14 @@ export function ProfileForm({
   // real locale by the time we render, but the field needs a narrowed one.
   const activeLocale = isLocale(locale) ? locale : defaultLocale;
 
+  const languageIds = useMemo(
+    () => languages.map((language) => language.id),
+    [languages],
+  );
+
   const schema = useMemo(
-    () => createProfileSchema(tValidation, genders),
-    [tValidation, genders],
+    () => createProfileSchema(tValidation, genders, languageIds),
+    [tValidation, genders, languageIds],
   );
 
   /*
@@ -156,7 +172,7 @@ export function ProfileForm({
 
   const { values, errors, setField, handleSubmit } = useValidatedForm(
     schema,
-    defaults ?? initialValuesFor(activeLocale),
+    defaults ?? initialValuesFor(activeLocale, languages),
     (valid) => {
       setSubmitted(valid);
       startTransition(() => submit({ ...valid, locale }));
@@ -175,7 +191,9 @@ export function ProfileForm({
     setShownLocale(activeLocale);
     // Not when editing: the member has a saved preference, and switching the
     // site language for a moment shouldn't quietly rewrite it.
-    if (!languageChosen && !defaults) setField("preferredLanguage", activeLocale);
+    if (!languageChosen && !defaults) {
+      setField("preferredLanguage", toPreferredLang(activeLocale, languages) ?? "");
+    }
   }
 
   /** Client-side error wins; the server's shows only while it still applies. */
@@ -204,9 +222,10 @@ export function ProfileForm({
     return { value, label: t.has(key) ? t(key) : value };
   });
 
-  const languageOptions = locales.map((value) => ({
-    value,
-    label: t(`profile.languageOptions.${value}`),
+  // The catalogue names each language itself, so there's nothing to translate.
+  const languageOptions = languages.map((language) => ({
+    value: language.id,
+    label: language.name,
   }));
 
   return (
@@ -330,6 +349,7 @@ export function ProfileForm({
           </FieldLabel>
           <Select
             value={values.preferredLanguage}
+            disabled={languageOptions.length === 0}
             onValueChange={(value) => {
               setLanguageChosen(true);
               setField("preferredLanguage", value);
@@ -345,7 +365,13 @@ export function ProfileForm({
                   : undefined
               }
             >
-              <SelectValue placeholder={t("profile.languagePlaceholder")} />
+              <SelectValue
+                placeholder={
+                  languageOptions.length === 0
+                    ? t("profile.languagesUnavailable")
+                    : t("profile.languagePlaceholder")
+                }
+              />
             </SelectTrigger>
             <SelectContent>
               {languageOptions.map((option) => (

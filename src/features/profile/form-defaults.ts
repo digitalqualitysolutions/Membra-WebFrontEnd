@@ -1,7 +1,10 @@
 import type { Locale } from "@/config/locales";
-import { isLocale } from "@/config/locales";
 import type { SessionUser } from "@/features/auth/api/auth-wire";
-import type { Gender } from "@/features/onboarding/api/profile-wire";
+import type { ClubLanguageOption } from "@/features/club/api/club-wire";
+import {
+  toPreferredLang,
+  type Gender,
+} from "@/features/onboarding/api/profile-wire";
 import { genderCategories } from "@/features/onboarding/schemas";
 import type { ProfileFormValues } from "@/features/onboarding/types";
 
@@ -20,6 +23,8 @@ export function profileFormDefaults(
   genders: readonly string[] = genderCategories,
   /** Every gender with its id, from `genderList()`, to read `genderId` by. */
   genderRows: readonly Gender[] = [],
+  /** The catalogue the language select offers, from `languageList()`. */
+  languages: readonly ClubLanguageOption[] = [],
 ): ProfileFormValues {
   return {
     firstName: user.firstName ?? "",
@@ -27,10 +32,12 @@ export function profileFormDefaults(
     nickname: user.nickname ?? "",
     dateOfBirth: toMaskedDate(user.dateOfBirth),
     genderCategory: toGenderCategory(user.genderId, genders, genderRows),
-    // Their saved choice, or the language they're reading this in.
-    preferredLanguage: isLocale(user.preferredLanguage ?? "")
-      ? (user.preferredLanguage as Locale)
-      : locale,
+    // Their saved row if the catalogue still lists it, else the one for the
+    // language they're reading this in. A select can't show what it won't offer.
+    preferredLanguage:
+      languages.find((row) => row.id === user.preferredLanguage)?.id ??
+      toPreferredLang(locale, languages) ??
+      "",
     // Already given, or the profile wouldn't have been stored in the first
     // place. Shown ticked so unticking it stays a deliberate act.
     consentStorage: true,
